@@ -4,3 +4,4 @@ spark code expect file that contains four columns
 # row_number, date, id as variable, usage as power
 input data is accumulative and in file one we changed all_data.csv to expected format
 the final_output is spark_readable.csv
+file two count null values and save good user in other file
