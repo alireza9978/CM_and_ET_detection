@@ -18,14 +18,14 @@ sdf = spark.read.format('csv').options(header='true',
 sdf = rename_data_frame(sdf)
 sdf = string_power_to_array(sdf)
 sdf = add_statistics_column(sdf)
-train_percent = 0.4
+TRAIN_PERCENT = 0.4
 
 users_data_count = sdf.groupby("id").agg(f.count(sdf.date).alias("count"),
                                          f.min(sdf.date).alias("min"),
                                          f.max(sdf.date).alias("max"),
                                          f.datediff(f.max(sdf.date), f.min(sdf.date)).alias("date_diff"))
-users_data_count = users_data_count.withColumn("train_count", f.floor(f.col("count") * train_percent))
-users_data_count = users_data_count.withColumn("test_count", f.ceil(f.col("count") * (1 - train_percent)))
+users_data_count = users_data_count.withColumn("train_count", f.floor(f.col("count") * TRAIN_PERCENT))
+users_data_count = users_data_count.withColumn("test_count", f.ceil(f.col("count") * (1 - TRAIN_PERCENT)))
 users_data_count = users_data_count.withColumn("split_date", f.expr("date_add(min, train_count)"))
 # users_data_count = users_data_count.withColumn("split_date", f.date_add("min", f.col("train_count")))
 # date_add_udf = f.udf(lambda date, days: f.date_add(date, days), TimestampType())
