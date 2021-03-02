@@ -6,29 +6,30 @@ data_frame = pd.read_csv("my_data/all_data.csv", date_parser=["datetime"])
 data_frame.date = pd.to_datetime(data_frame.date)
 data_frame = data_frame[["id", "date", "usage"]]
 
-# select a random user from all users
-user_df = data_frame[data_frame["id"] == 1505504205221]
-user_id = user_df.id.iloc[0]
 
-# ekhtelaf masraf ha ro hesab mikonim aval to scale haie mokhtalef be darsad
-# user_df["difference_hour"] = 100 * (user_df["usage"] - user_df["usage"].shift(1)) / user_df["usage"]
-print("null count = ", user_df.usage.isnull().sum())
-user_df = user_df.set_index("date")
-user_df["usage"] = user_df["usage"] - user_df["usage"].shift(1)
-half_daily_df = user_df.resample("12H").agg({"usage": "sum"})
-daily_df = user_df.resample("1D").agg({"usage": "sum"})
-week_df = user_df.resample("7D").agg({"usage": "sum"})
+def plot_user(user_id):
+    # select a random user from all users
+    user_df = data_frame[data_frame["id"] == user_id]
 
-plt.figure()
-plt.subplot(411)
-plt.scatter(user_df.index, user_df["usage"], color='blue', label="daily")
+    # ekhtelaf masraf ha ro hesab mikonim aval to scale haie mokhtalef be darsad
+    # user_df["difference_hour"] = 100 * (user_df["usage"] - user_df["usage"].shift(1)) / user_df["usage"]
+    print("null count = ", user_df.usage.isnull().sum())
+    user_df = user_df.set_index("date")
+    user_df["usage"] = user_df["usage"] - user_df["usage"].shift(1)
+    half_daily_df = user_df.resample("12H").agg({"usage": "sum"})
+    daily_df = user_df.resample("1D").agg({"usage": "sum"})
+    week_df = user_df.resample("7D").agg({"usage": "sum"})
 
-plt.subplot(412)
-plt.plot(half_daily_df["usage"], color='green')
+    plt.figure()
+    plt.subplot(411)
+    plt.scatter(user_df.index, user_df["usage"], color='blue', label="daily")
 
-plt.subplot(413)
-plt.plot(daily_df["usage"], color='black')
+    plt.subplot(412)
+    plt.plot(half_daily_df["usage"], color='green')
 
-plt.subplot(414)
-plt.plot(week_df["usage"], color='red', marker='o')
-plt.show()
+    plt.subplot(413)
+    plt.plot(daily_df["usage"], color='black')
+
+    plt.subplot(414)
+    plt.plot(week_df["usage"], color='red', marker='o')
+    plt.show()
