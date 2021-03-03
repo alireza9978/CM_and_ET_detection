@@ -39,38 +39,19 @@ df_user = df_user.groupby("id").resample("1H").agg({"usage": "max"})
 df_user = df_user.reset_index(level="id", drop=False)
 df_user["usage"] = df_user["usage"] - df_user["usage"].shift(1)
 
-resample_hour = 24 * 3
-my_df = my_calculate(df_user, resample_value="{}H".format(resample_hour), moving_avg_windows_size=20, std_coe=2.5)
-print(my_df)
+resample_hour = 24
+my_df = my_calculate(df_user, resample_value="{}H".format(resample_hour), moving_avg_windows_size=24, std_coe=2.5)
+
 thief_prediction = my_df[my_df.usage < my_df.lower_band]
 mining_prediction = my_df[my_df.usage > my_df.upper_band]
-if mining_prediction.shape[0] > 0:
-    middle_index = my_df.index.get_loc(mining_prediction.index[0])
-    start = middle_index - 20
-    end = middle_index + 20
-    if start < 0:
-        start = 0
-    if end > len(my_df.index):
-        end = len(my_df.index)
-    # my_plot(my_df[start:end])
-    print(my_df[start:end])
+
+if mining_prediction.shape[0] > 0 or thief_prediction.shape[0] > 0:
     print(thief_prediction)
     print(mining_prediction)
-    plot_user(temp_user, mining_prediction.index[0])
-elif thief_prediction.shape[0] > 0:
-    middle_index = my_df.index.get_loc(thief_prediction.index[0])
-    start = middle_index - 20
-    end = middle_index + 20
-    if start < 0:
-        start = 0
-    if end > len(my_df.index):
-        end = len(my_df.index)
-    my_plot(my_df[start:end])
-    print(my_df[start:end])
-    print(thief_prediction)
-    print(mining_prediction)
+    for index in mining_prediction.index:
+        plot_user(temp_user, index)
+    for index in thief_prediction.index:
+        plot_user(temp_user, index)
+    plot_user(temp_user)
 else:
     print("not thief found")
-    print(thief_prediction)
-    print(mining_prediction)
-    plot_user(temp_user , 0)
