@@ -9,7 +9,7 @@ data_frame.date = pd.to_datetime(data_frame.date)
 data_frame = data_frame[["id", "date", "usage"]]
 
 
-def plot_user(user_id, index: pd.Timestamp = None):
+def plot_user(user_id, index: pd.Timestamp = None, hour=True, six_hour=True, half_day=True, day=True, week=True):
     # select a random user from all users
     user_df = data_frame[data_frame["id"] == user_id]
 
@@ -21,18 +21,24 @@ def plot_user(user_id, index: pd.Timestamp = None):
     # user_df["difference_hour"] = 100 * (user_df["usage"] - user_df["usage"].shift(1)) / user_df["usage"]
     user_df = user_df.set_index("date")
     user_df["usage"] = user_df["usage"] - user_df["usage"].shift(1)
-    half_daily_df = user_df.resample("12H").agg({"usage": "sum"})
-    daily_df = user_df.resample("1D").agg({"usage": "sum"})
-    week_df = user_df.resample("7D").agg({"usage": "sum"})
+    data_frame_plot_range = [240, 100, 100, 15, 15]
+    data_frames = []
+    if hour:
+        data_frames.append((user_df, data_frame_plot_range[0]))
+    if six_hour:
+        data_frames.append((user_df.resample("6H").agg({"usage": "sum"}), data_frame_plot_range[1]))
+    if half_day:
+        data_frames.append((user_df.resample("12H").agg({"usage": "sum"}), data_frame_plot_range[2]))
+    if day:
+        data_frames.append((user_df.resample("1D").agg({"usage": "sum"}), data_frame_plot_range[3]))
+    if week:
+        data_frames.append((user_df.resample("7D").agg({"usage": "sum"}), data_frame_plot_range[4]))
 
     if index is not None:
-        main_middle = user_df.index.get_loc(nearest(user_df.index, index))
-        half_day_middle = half_daily_df.index.get_loc(nearest(half_daily_df.index, index))
-        day_middle = daily_df.index.get_loc(nearest(daily_df.index, index))
-        week_middle = week_df.index.get_loc(nearest(week_df.index, index))
+        middles = []
+        for temp_df, plot_range in data_frames:
+            middles.append((temp_df.index.get_loc(nearest(temp_df.index, index)), len(temp_df.index), plot_range))
 
-        middles = [(main_middle, len(user_df.index), 240), (half_day_middle, len(half_daily_df.index), 20),
-                   (day_middle, len(daily_df.index), 10), (week_middle, len(week_df.index), 10)]
         end = []
         start = []
         for temp in middles:
@@ -44,23 +50,15 @@ def plot_user(user_id, index: pd.Timestamp = None):
                 end.append(temp[1])
             else:
                 end.append(temp[0] + temp[2])
-        user_df = user_df[start[0]:end[0]]
-        half_daily_df = half_daily_df[start[1]:end[1]]
-        daily_df = half_daily_df[start[3]:end[2]]
-        week_df = half_daily_df[start[2]:end[3]]
+        for i in range(len(data_frames)):
+            data_frames[i] = (data_frames[i][0][start[i]:end[i]], data_frames[i][1])
 
-    plt.figure()
-    plt.subplot(411)
-    plt.plot(user_df["usage"], color='blue', label="hourly")
-
-    plt.subplot(412)
-    plt.plot(half_daily_df["usage"], color='green', label="half_day")
-
-    plt.subplot(413)
-    plt.plot(daily_df["usage"], color='black', label="daily")
-
-    plt.subplot(414)
-    plt.plot(week_df["usage"], color='red', marker='o', label="weekly")
+    fig, axes = plt.subplots(nrows=len(data_frames), ncols=1)
+    fig.tight_layout()
+    for i, (temp_df, plot_range) in enumerate(data_frames):
+        number = (len(data_frames) * 100) + 11 + i
+        plt.subplot(number)
+        plt.plot(temp_df["usage"])
     target_path = "my_figures/force_result/{}".format(user_id)
     if not os.path.isdir(target_path):
         os.makedirs(target_path)
@@ -68,3 +66,4 @@ def plot_user(user_id, index: pd.Timestamp = None):
         plt.savefig(target_path + "/main_middle_{}.jpg".format(middles[0][0]))
     else:
         plt.savefig(target_path + "/all_data.jpg")
+    plt.close()
