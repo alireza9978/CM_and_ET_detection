@@ -7,9 +7,13 @@ data_frame.date = pd.to_datetime(data_frame.date)
 data_frame = data_frame[["id", "date", "usage"]]
 
 
-def plot_user(user_id):
+def plot_user(user_id, index: pd.Timestamp):
     # select a random user from all users
     user_df = data_frame[data_frame["id"] == user_id]
+
+    # nazdik tarin index be index vorodi ro to list peida mikone
+    def nearest(items, pivot):
+        return min(items, key=lambda x: abs(x - pivot))
 
     # ekhtelaf masraf ha ro hesab mikonim aval to scale haie mokhtalef be darsad
     # user_df["difference_hour"] = 100 * (user_df["usage"] - user_df["usage"].shift(1)) / user_df["usage"]
@@ -20,16 +24,35 @@ def plot_user(user_id):
     daily_df = user_df.resample("1D").agg({"usage": "sum"})
     week_df = user_df.resample("7D").agg({"usage": "sum"})
 
+    main_middle = user_df.index.get_loc(nearest(user_df.index, index))
+    half_day_middle = half_daily_df.index.get_loc(nearest(half_daily_df.index, index))
+    day_middle = daily_df.index.get_loc(nearest(daily_df.index, index))
+    week_middle = week_df.index.get_loc(nearest(week_df.index, index))
+
+    middles = [(main_middle, len(user_df.index), 240), (half_day_middle, len(half_daily_df.index), 20),
+               (day_middle, len(daily_df.index), 10), (week_middle, len(week_df.index), 10)]
+    end = []
+    start = []
+    for temp in middles:
+        if temp[0] - temp[2] < 0:
+            start.append(0)
+        else:
+            start.append(temp[0] - temp[2])
+        if temp[0] + temp[2] > temp[1]:
+            end.append(temp[1])
+        else:
+            end.append(temp[0] + temp[2])
+
     plt.figure()
     plt.subplot(411)
-    plt.scatter(user_df.index, user_df["usage"], color='blue', label="daily")
+    plt.plot(user_df[start[0]:end[0]]["usage"], color='blue', label="hourly")
 
     plt.subplot(412)
-    plt.plot(half_daily_df["usage"], color='green')
+    plt.plot(half_daily_df[start[1]:end[1]]["usage"], color='green', label="half_day")
 
     plt.subplot(413)
-    plt.plot(daily_df["usage"], color='black')
+    plt.plot(daily_df[start[2]:end[2]]["usage"], color='black', label="daily")
 
     plt.subplot(414)
-    plt.plot(week_df["usage"], color='red', marker='o')
+    plt.plot(week_df[start[3]:end[3]]["usage"], color='red', marker='o', label="weekly")
     plt.show()

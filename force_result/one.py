@@ -52,10 +52,11 @@ if mining_prediction.shape[0] > 0:
         start = 0
     if end > len(my_df.index):
         end = len(my_df.index)
-    my_plot(my_df[start:end])
+    # my_plot(my_df[start:end])
     print(my_df[start:end])
     print(thief_prediction)
     print(mining_prediction)
+    plot_user(temp_user, mining_prediction.index[0])
 elif thief_prediction.shape[0] > 0:
     middle_index = my_df.index.get_loc(thief_prediction.index[0])
     start = middle_index - 20
@@ -72,4 +73,4 @@ else:
     print("not thief found")
     print(thief_prediction)
     print(mining_prediction)
-    plot_user(temp_user)
+    plot_user(temp_user , 0)
