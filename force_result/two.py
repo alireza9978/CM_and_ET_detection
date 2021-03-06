@@ -47,3 +47,5 @@ print(mining_prediction)
 mining_prediction = mining_prediction.reset_index(level="id", drop=False)
 for index, data in zip(mining_prediction.index, mining_prediction.values):
     plot_user(int(data[0]), index)
+
+# todo bad az detect mean balaie yek chizi bashe
