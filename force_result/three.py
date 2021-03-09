@@ -85,6 +85,28 @@ def calculate_bands(temp_df: pd.DataFrame):
     return temp_df
 
 
+def day_night_usage_filter(temp_df: pd.DataFrame, day_mean_above: float = None, night_mean_above: float = None,
+                           day_mean_below: float = None, night_mean_below: float = None):
+    def calculate_day_night_mean(inner_df: pd.DataFrame):
+        day_mean = inner_df[inner_df["day"]]["usage"].mean()
+        night_mean = inner_df[~inner_df["day"]]["usage"].mean()
+        return pd.Series([day_mean, night_mean])
+
+    temp_df["day"] = (temp_df.index.hour > 5) & (temp_df.index.hour < 18)
+    day_night_mean_df = temp_df.groupby("id").apply(calculate_day_night_mean)
+    day_night_mean_df = day_night_mean_df.reset_index(level="id", drop=False)
+
+    if day_mean_above is not None:
+        temp_df = temp_df[temp_df.id.isin(day_night_mean_df[(day_night_mean_df[0] > day_mean_above)]["id"])]
+    if day_mean_below is not None:
+        temp_df = temp_df[temp_df.id.isin(day_night_mean_df[(day_night_mean_df[0] < day_mean_below)]["id"])]
+    if night_mean_above is not None:
+        temp_df = temp_df[temp_df.id.isin(day_night_mean_df[(day_night_mean_df[1] > night_mean_above)]["id"])]
+    if night_mean_below is not None:
+        temp_df = temp_df[temp_df.id.isin(day_night_mean_df[(day_night_mean_df[1] < night_mean_below)]["id"])]
+    return temp_df[["id", "usage"]]
+
+
 def plot(temp_df: pd.DataFrame, user_id: int, fig_name: str):
     temp_df = select_one_user(temp_df, user_id)
     fig, axe = plt.subplots(1, 1, figsize=(10, 5))
