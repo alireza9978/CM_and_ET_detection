@@ -2,6 +2,7 @@ import random
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from persiantools.jdatetime import JalaliDateTime
 
@@ -60,13 +61,17 @@ def filter_date(temp_df: pd.DataFrame, start: pd.Timestamp = None, end: pd.Times
     return temp_df
 
 
-def set_detection_parameters(resample: str, windows_size: int, std: float):
+def set_detection_parameters(resample: str, windows_size: int, std: float, new_m: int, new_n: int):
     global resample_value
     global moving_avg_windows_size
     global std_coe
+    global m
+    global n
     resample_value = resample
     moving_avg_windows_size = windows_size
     std_coe = std
+    m = new_m
+    n = new_n
 
 
 def calculate_usage(temp_df):
@@ -138,9 +143,7 @@ def get_std_df(temp_df: pd.DataFrame):
         indexer = pd.api.indexers.FixedForwardWindowIndexer(window_size=moving_avg_windows_size)
         inner_df["avg_value"] = inner_df.usage.rolling(window=indexer, min_periods=1).mean()
         inner_df["std_value"] = inner_df.usage.rolling(window=indexer, min_periods=1).std()
-        # inner_df["avg_value"] = inner_df["avg_value"].replace(0, 1)
         inner_df["semi_var"] = inner_df["std_value"] / inner_df["avg_value"]
-        # inner_df["semi_var"] = inner_df["semi_var"].where(inner_df["std_value"] > 0.1, inner_df["semi_var"].max())
         return inner_df[["semi_var"]]
 
     temp_df = temp_df.groupby(["id"]).apply(calculate_mean)
@@ -148,7 +151,8 @@ def get_std_df(temp_df: pd.DataFrame):
     return temp_df
 
 
-def usage_mean_above_input_percent(temp_df: pd.DataFrame, correct_above: float, daily_usage_above: int):
+def usage_mean_above_input_percent(temp_df: pd.DataFrame, correct_above: float, resample_type: str,
+                                   daily_usage_above: int):
     def above_threshold(inner_df: pd.DataFrame):
         val = inner_df["high"].sum() / inner_df["high"].count()
         if val > correct_above:
@@ -157,7 +161,7 @@ def usage_mean_above_input_percent(temp_df: pd.DataFrame, correct_above: float, 
             inner_df["good"] = False
         return inner_df
 
-    daily_temp_df = temp_df.groupby("id").resample("1D").agg({"usage": "sum"})
+    daily_temp_df = temp_df.groupby("id").resample(resample_type).agg({"usage": "sum"})
     daily_temp_df = daily_temp_df.reset_index("id", drop=False)
     daily_temp_df["high"] = daily_temp_df.usage > daily_usage_above
     daily_temp_df = daily_temp_df.groupby("id").apply(above_threshold)
@@ -216,14 +220,95 @@ def plot_detection(temp_df: pd.DataFrame, mining_prediction: pd.DataFrame, theft
     plt.close()
 
 
+def calculate_bands_new_method(temp_df: pd.DataFrame):
+    temp_df = temp_df.resample(resample_value).agg({"usage": "sum"})
+    usage = temp_df.usage
+    temp_df["mining"] = False
+    temp_df["theft"] = False
+    temp_df["to_use"] = True
+    start = moving_avg_windows_size
+    while start < usage.shape[0]:
+        temp_data = usage[start]
+        temp_window = usage.iloc[start - moving_avg_windows_size:][
+                          temp_df.iloc[start - moving_avg_windows_size:]["to_use"]][
+                      0:moving_avg_windows_size].copy()
+
+        temp_avg = temp_window.mean()
+        temp_std = temp_window.std()
+        temp_upper = temp_avg + (temp_std * std_coe)
+        temp_lower = temp_avg - (temp_std * std_coe)
+
+        if temp_data > temp_upper:
+            step = 1
+            while True:
+                m_window = usage[start + step:start + step + m]
+                m_window_detect = (m_window > temp_upper) & (m_window > 20)
+                m_window_ok = m_window_detect.sum() < n
+                if m_window_ok:
+                    break
+                step += 1
+            if step > 1:
+                temp_df["mining"][start + 1:start + step + m] = (usage[start + 1:start + step + m] > temp_upper)
+                temp_df["to_use"][start + 1:start + step + m] = (usage[start + 1:start + step + m] < temp_upper)
+                start = start + moving_avg_windows_size + step
+
+        if temp_data < temp_lower:
+            step = 1
+            while True:
+                m_window = usage[start + step:start + step + m]
+                m_window_detect = (m_window < temp_lower)
+                m_window_ok = m_window_detect.sum() < n
+                if m_window_ok:
+                    break
+                step += 1
+            if step > 1:
+                temp_df["theft"][start + 1:start + step + m] = (usage[start + 1:start + step + m] < temp_lower)
+                temp_df["to_use"][start + 1:start + step + m] = (usage[start + 1:start + step + m] > temp_lower)
+                start = start + moving_avg_windows_size + step
+
+        start += 1
+    return temp_df
+
+
+def plot_new_detection(temp_df: pd.DataFrame, temp_user_id: int, fig_name: str):
+    temp_df = select_one_user(temp_df, temp_user_id)
+    fig, axe = plt.subplots(1, 1, figsize=(10, 5))
+    indexes = temp_df.index.map(JalaliDateTime).map(str)
+    axe.plot(indexes, temp_df["usage"], 'black', label="usage")
+    temp_df["mining_value"] = np.inf
+    temp_df["mining_value"] = temp_df["usage"][temp_df["mining"]]
+    temp_df["theft_value"] = np.inf
+    temp_df["theft_value"] = temp_df["usage"][temp_df["theft"]]
+    if temp_df[temp_df["mining"]].count()[0] > 0:
+        axe.plot(indexes, temp_df["mining_value"], 'yellow', label="mining")
+    if temp_df[temp_df["theft"]].count()[0] > 0:
+        axe.plot(indexes, temp_df["theft_value"], 'r', label="theft")
+    locator = mdates.AutoDateLocator(minticks=10, maxticks=15)
+    axe.xaxis.set_major_locator(locator)
+    axe.legend()
+
+    for label in axe.get_xticklabels():
+        label.set_rotation(20)
+        label.set_horizontalalignment('right')
+    fig.tight_layout()
+    plt.savefig(fig_name)
+    plt.close()
+
+
+def new_detect(temp_df: pd.DataFrame):
+    temp_df = temp_df.groupby(["id"]).apply(calculate_bands_new_method)
+    temp_df = temp_df.reset_index(level="id", drop=False)
+    return temp_df
+
+
 def test():
     temp_df = load_data_frame()
-    temp_df = select_one_user(temp_df, 1502940805227)
+    # temp_df = usage_mean_above_input_percent(temp_df, 0.7, "1D", 2)
+    # temp_df = day_night_usage_filter(temp_df, 1.5, 1)
     # temp_df = usage_mean_above(temp_df, 50, "1D")
     # temp_df = usage_mean_below(temp_df, 100, "1D")
-    temp_df = data_frame_agg(temp_df, "1D")
-    temp_df = filter_date(temp_df, pd.Timestamp(JalaliDateTime(1399, 9, 1).to_gregorian()),
-                          pd.Timestamp(JalaliDateTime(1399, 9, 17).to_gregorian()))
+    # temp_df = filter_date(temp_df, pd.Timestamp(JalaliDateTime(1399, 9, 1).to_gregorian()),
+    #                       pd.Timestamp(JalaliDateTime(1399, 9, 17).to_gregorian()))
     # temp_df = usage_mean_above_input_percent(temp_df, 0.8, 10)
     # detection
     # set_detection_parameters("7D", 40, 3.5)
@@ -235,11 +320,14 @@ def test():
 
     users = temp_df.id.unique()
     print(len(users))
-    plot(temp_df, users[0], str(users[0]) + ".jpg", ["usage"])
+    # for user in suspects:
+    #     plot(temp_df, user, "my_figures/suspect_{}.jpg".format(user), ["usage"])
     # plot_detection(temp_df, mining_prediction, theft_prediction, users[0], str(users[0]) + ".jpg")
 
 
 resample_value = "{}H".format(24)
 moving_avg_windows_size = 40
 std_coe = 2.5
-test()
+m = 20
+n = 15
+# test()
