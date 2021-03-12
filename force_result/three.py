@@ -118,8 +118,8 @@ def calculate_bands(temp_df: pd.DataFrame):
 def day_night_usage_filter(temp_df: pd.DataFrame, day_mean_above: float = None, night_mean_above: float = None,
                            day_mean_below: float = None, night_mean_below: float = None):
     def calculate_day_night_mean(inner_df: pd.DataFrame):
-        day_mean = inner_df[inner_df["day"]]["usage"].mean()
-        night_mean = inner_df[~inner_df["day"]]["usage"].mean()
+        day_mean = inner_df[inner_df["day"]]["usage"].sum()
+        night_mean = inner_df[~inner_df["day"]]["usage"].sum()
         return pd.Series([day_mean, night_mean])
 
     temp_df["day"] = (temp_df.index.hour > 5) & (temp_df.index.hour < 18)
@@ -164,6 +164,24 @@ def usage_mean_above_input_percent(temp_df: pd.DataFrame, correct_above: float, 
     daily_temp_df = temp_df.groupby("id").resample(resample_type).agg({"usage": "sum"})
     daily_temp_df = daily_temp_df.reset_index("id", drop=False)
     daily_temp_df["high"] = daily_temp_df.usage > daily_usage_above
+    daily_temp_df = daily_temp_df.groupby("id").apply(above_threshold)
+    daily_temp_df = daily_temp_df[daily_temp_df["good"]]
+    return temp_df[temp_df.id.isin(daily_temp_df.id.unique())]
+
+
+def usage_mean_below_input_percent(temp_df: pd.DataFrame, correct_above: float, resample_type: str,
+                                   daily_usage_below: int):
+    def above_threshold(inner_df: pd.DataFrame):
+        val = inner_df["high"].sum() / inner_df["high"].count()
+        if val > correct_above:
+            inner_df["good"] = True
+        else:
+            inner_df["good"] = False
+        return inner_df
+
+    daily_temp_df = temp_df.groupby("id").resample(resample_type).agg({"usage": "sum"})
+    daily_temp_df = daily_temp_df.reset_index("id", drop=False)
+    daily_temp_df["high"] = daily_temp_df.usage < daily_usage_below
     daily_temp_df = daily_temp_df.groupby("id").apply(above_threshold)
     daily_temp_df = daily_temp_df[daily_temp_df["good"]]
     return temp_df[temp_df.id.isin(daily_temp_df.id.unique())]
@@ -303,7 +321,12 @@ def new_detect(temp_df: pd.DataFrame):
 
 def test():
     temp_df = load_data_frame()
-    # temp_df = usage_mean_above_input_percent(temp_df, 0.7, "1D", 2)
+    users = temp_df.id.unique()
+    print(len(users))
+    # avg day night
+    #
+    # temp_df = day_night_usage_filter(temp_df, 3)
+    temp_df = usage_mean_above_input_percent(temp_df, 0.7, "1D", 2)
     # temp_df = day_night_usage_filter(temp_df, 1.5, 1)
     # temp_df = usage_mean_above(temp_df, 50, "1D")
     # temp_df = usage_mean_below(temp_df, 100, "1D")
@@ -330,4 +353,4 @@ moving_avg_windows_size = 40
 std_coe = 2.5
 m = 20
 n = 15
-# test()
+test()
