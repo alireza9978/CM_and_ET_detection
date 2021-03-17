@@ -118,8 +118,8 @@ def calculate_bands(temp_df: pd.DataFrame):
 def day_night_usage_filter(temp_df: pd.DataFrame, day_mean_above: float = None, night_mean_above: float = None,
                            day_mean_below: float = None, night_mean_below: float = None):
     def calculate_day_night_mean(inner_df: pd.DataFrame):
-        day_mean = inner_df[inner_df["day"]]["usage"].sum()
-        night_mean = inner_df[~inner_df["day"]]["usage"].sum()
+        day_mean = inner_df[inner_df["day"]]["usage"].mean()
+        night_mean = inner_df[~inner_df["day"]]["usage"].mean()
         return pd.Series([day_mean, night_mean])
 
     temp_df["day"] = (temp_df.index.hour > 5) & (temp_df.index.hour < 18)
