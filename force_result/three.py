@@ -8,7 +8,7 @@ from persiantools.jdatetime import JalaliDateTime
 
 
 def load_data_frame():
-    temp_df = pd.read_csv("my_data/good_data.csv", date_parser=["datetime"])
+    temp_df = pd.read_csv("my_data/all_data.csv", date_parser=["datetime"])
     temp_df.date = pd.to_datetime(temp_df.date)
     temp_df = temp_df[["id", "date", "usage"]]
     temp_df = temp_df.set_index("date")
@@ -59,6 +59,19 @@ def filter_date(temp_df: pd.DataFrame, start: pd.Timestamp = None, end: pd.Times
     if end is not None:
         temp_df = temp_df[temp_df.index < end]
     return temp_df
+
+
+def set_detection_parameters_optimizer(resample: float, windows_size: float, std: float, new_m: float, new_n: float):
+    global resample_value
+    global moving_avg_windows_size
+    global std_coe
+    global m
+    global n
+    resample_value = "{}H".format(6 + int(resample * 24 * 7))
+    moving_avg_windows_size = 10 + int(windows_size * 40)
+    std_coe = 1.5 + int(std * 4)
+    m = 6 + int(new_m * 40)
+    n = int(m * new_n)
 
 
 def set_detection_parameters(resample: str, windows_size: int, std: float, new_m: int, new_n: int):
@@ -319,33 +332,27 @@ def new_detect(temp_df: pd.DataFrame):
     return temp_df
 
 
-def test():
-    temp_df = load_data_frame()
-    users = temp_df.id.unique()
-    print(len(users))
-    # avg day night
-    #
-    # temp_df = day_night_usage_filter(temp_df, 3)
-    temp_df = usage_mean_above_input_percent(temp_df, 0.7, "1D", 2)
-    # temp_df = day_night_usage_filter(temp_df, 1.5, 1)
-    # temp_df = usage_mean_above(temp_df, 50, "1D")
-    # temp_df = usage_mean_below(temp_df, 100, "1D")
-    # temp_df = filter_date(temp_df, pd.Timestamp(JalaliDateTime(1399, 9, 1).to_gregorian()),
-    #                       pd.Timestamp(JalaliDateTime(1399, 9, 17).to_gregorian()))
-    # temp_df = usage_mean_above_input_percent(temp_df, 0.8, 10)
-    # detection
-    # set_detection_parameters("7D", 40, 3.5)
-    # temp_df = detect(temp_df)
-    # mining_prediction = temp_df[temp_df.usage > temp_df.upper_band]
-    # theft_prediction = temp_df[temp_df.usage < temp_df.lower_band]
-    # print(mining_prediction)
-    # print(theft_prediction)
-
-    users = temp_df.id.unique()
-    print(len(users))
-    # for user in suspects:
-    #     plot(temp_df, user, "my_figures/suspect_{}.jpg".format(user), ["usage"])
-    # plot_detection(temp_df, mining_prediction, theft_prediction, users[0], str(users[0]) + ".jpg")
+def calculate_accuracy(a):
+    set_detection_parameters_optimizer(a[0], a[1], a[2], a[3], a[4])
+    correct_count = 0
+    for user_id in good_users:
+        temp_user = select_one_user(main_df, user_id)
+        user_label = labels[labels.img == user_id].all()
+        temp_detection = new_detect(temp_user)
+        is_mining = temp_detection.mining.sum() > 0
+        is_theft = temp_detection.theft.sum() > 0
+        if user_label.normal:
+            if not is_mining or not is_theft:
+                correct_count += 1
+        elif user_label.mining:
+            if is_mining:
+                correct_count += 1
+        elif user_label.theft:
+            if is_theft:
+                correct_count += 1
+        elif is_theft or is_mining:
+            correct_count += 1
+    return 1 - (correct_count / len(good_users))
 
 
 resample_value = "{}H".format(24)
@@ -353,4 +360,7 @@ moving_avg_windows_size = 40
 std_coe = 2.5
 m = 20
 n = 15
-test()
+
+labels = pd.read_csv("my_data/labels.csv")
+good_users = labels[labels.unknown != 1].img.tolist()
+main_df = load_data_frame()
