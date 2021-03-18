@@ -61,16 +61,16 @@ def filter_date(temp_df: pd.DataFrame, start: pd.Timestamp = None, end: pd.Times
     return temp_df
 
 
-def set_detection_parameters_optimizer(resample: float, windows_size: float, std: float, new_m: float, new_n: float):
+def set_detection_parameters_optimizer(resample, windows_size, std, new_m, new_n):
     global resample_value
     global moving_avg_windows_size
     global std_coe
     global m
     global n
-    resample_value = "{}H".format(6 + int(resample * 24 * 7))
-    moving_avg_windows_size = 10 + int(windows_size * 40)
-    std_coe = 1.5 + int(std * 4)
-    m = 6 + int(new_m * 40)
+    resample_value = "{}H".format(12 + resample)
+    moving_avg_windows_size = int(10 + windows_size)
+    std_coe = 1 + std
+    m = int(6 + new_m)
     n = int(m * new_n)
 
 
@@ -362,5 +362,6 @@ m = 20
 n = 15
 
 labels = pd.read_csv("my_data/labels.csv")
-good_users = labels[labels.unknown != 1].img.tolist()
+good_users = random.sample(labels[labels.unknown != 1].img.tolist(), 10)
+# good_users = labels[labels.unknown != 1].img.tolist()
 main_df = load_data_frame()
