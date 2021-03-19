@@ -1,5 +1,3 @@
-from geneticalgorithm import geneticalgorithm as ga
-
 from force_result.three import *
 
 varbound = np.array([[0, 7 * 24], [0, 50], [0, 4], [0, 30], [0.5, 1]])
@@ -13,10 +11,16 @@ algorithm_param = {'max_num_iteration': 10,
                    'crossover_type': 'uniform',
                    'max_iteration_without_improv': None}
 
-model = ga(function=calculate_accuracy, dimension=5, variable_type_mixed=vartype, variable_boundaries=varbound,
+
+def my_sum(a):
+    return np.sum(a)
+
+
+model = ga(function=my_sum, dimension=5, variable_type_mixed=vartype, variable_boundaries=varbound,
            function_timeout=1000, algorithm_parameters=algorithm_param)
 model.run()
-
+model.best_variable
+print("aaa")
 # answer = gray_wolf_optimizer(calculate_accuracy, 0, 1, 5, 10, 3, True)
 #
 # print(answer.convergence[-1])

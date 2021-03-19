@@ -333,97 +333,97 @@ def new_detect(temp_df: pd.DataFrame):
     temp_df = temp_df.reset_index(level="id", drop=False)
     return temp_df
 
-
-def calculate_accuracy(a):
-    set_detection_parameters_optimizer(a[0], a[1], a[2], a[3], a[4])
-    correct_count = 0
-    for user_id in good_users:
-        temp_user = select_one_user(main_df, user_id)
-        user_label = labels[labels.img == user_id].all()
-        temp_detection = new_detect(temp_user)
-        is_mining = temp_detection.mining.sum() > 0
-        is_theft = temp_detection.theft.sum() > 0
-        if user_label.normal:
-            if not is_mining or not is_theft:
-                correct_count += 1
-        elif user_label.mining:
-            if is_mining:
-                correct_count += 1
-        elif user_label.theft:
-            if is_theft:
-                correct_count += 1
-        elif is_theft or is_mining:
-            correct_count += 1
-    return 1 - (correct_count / len(good_users))
-
-
-def run_k_fold():
-    varbound = np.array([[0, 7 * 24], [0, 50], [0, 4], [0, 30], [0.5, 1]])
-    vartype = np.array([['int'], ['int'], ['real'], ['int'], ["real"]])
-    algorithm_param = {'max_num_iteration': 100,
-                       'population_size': 150,
-                       'mutation_probability': 0.1,
-                       'elit_ratio': 0.01,
-                       'crossover_probability': 0.5,
-                       'parents_portion': 0.3,
-                       'crossover_type': 'uniform',
-                       'max_iteration_without_improv': None}
-
-    k_fold = KFold(4, shuffle=True)
-    # good_users = np.array(random.sample(labels[labels.unknown != 1].img.tolist(), 20))
-    # good_users = np.array(labels[labels.unknown != 1].img.tolist())
-    for train_index, test_index in k_fold.split(good_users):
-        train_x = good_users[train_index]
-        test_x = good_users[test_index]
-
-        def test_accuracy(a):
-            set_detection_parameters_optimizer(a[0], a[1], a[2], a[3], a[4])
-            correct_count = 0
-            for user_id in test_x:
-                temp_user = select_one_user(main_df, user_id)
-                user_label = labels[labels.img == user_id].all()
-                temp_detection = new_detect(temp_user)
-                is_mining = temp_detection.mining.sum() > 0
-                is_theft = temp_detection.theft.sum() > 0
-                if user_label.normal:
-                    if not is_mining or not is_theft:
-                        correct_count += 1
-                elif user_label.mining:
-                    if is_mining:
-                        correct_count += 1
-                elif user_label.theft:
-                    if is_theft:
-                        correct_count += 1
-                elif is_theft or is_mining:
-                    correct_count += 1
-            return correct_count / len(good_users)
-
-        def train_accuracy(a):
-            set_detection_parameters_optimizer(a[0], a[1], a[2], a[3], a[4])
-            correct_count = 0
-            for user_id in train_x:
-                temp_user = select_one_user(main_df, user_id)
-                user_label = labels[labels.img == user_id].all()
-                temp_detection = new_detect(temp_user)
-                is_mining = temp_detection.mining.sum() > 0
-                is_theft = temp_detection.theft.sum() > 0
-                if user_label.normal:
-                    if not is_mining or not is_theft:
-                        correct_count += 1
-                elif user_label.mining:
-                    if is_mining:
-                        correct_count += 1
-                elif user_label.theft:
-                    if is_theft:
-                        correct_count += 1
-                elif is_theft or is_mining:
-                    correct_count += 1
-            return 1 - (correct_count / len(good_users))
-
-        model = ga(function=train_accuracy, dimension=5, variable_type_mixed=vartype, variable_boundaries=varbound,
-                   function_timeout=1000, algorithm_parameters=algorithm_param, convergence_curve=False)
-        model.run()
-        print(test_accuracy(model.best_variable))
+#
+# def calculate_accuracy(a):
+#     set_detection_parameters_optimizer(a[0], a[1], a[2], a[3], a[4])
+#     correct_count = 0
+#     for user_id in good_users:
+#         temp_user = select_one_user(main_df, user_id)
+#         user_label = labels[labels.img == user_id].all()
+#         temp_detection = new_detect(temp_user)
+#         is_mining = temp_detection.mining.sum() > 0
+#         is_theft = temp_detection.theft.sum() > 0
+#         if user_label.normal:
+#             if not is_mining or not is_theft:
+#                 correct_count += 1
+#         elif user_label.mining:
+#             if is_mining:
+#                 correct_count += 1
+#         elif user_label.theft:
+#             if is_theft:
+#                 correct_count += 1
+#         elif is_theft or is_mining:
+#             correct_count += 1
+#     return 1 - (correct_count / len(good_users))
+#
+#
+# def run_k_fold():
+#     varbound = np.array([[0, 7 * 24], [0, 50], [0, 4], [0, 30], [0.5, 1]])
+#     vartype = np.array([['int'], ['int'], ['real'], ['int'], ["real"]])
+#     algorithm_param = {'max_num_iteration': 100,
+#                        'population_size': 150,
+#                        'mutation_probability': 0.1,
+#                        'elit_ratio': 0.01,
+#                        'crossover_probability': 0.5,
+#                        'parents_portion': 0.3,
+#                        'crossover_type': 'uniform',
+#                        'max_iteration_without_improv': None}
+#
+#     k_fold = KFold(4, shuffle=True)
+#     # good_users = np.array(random.sample(labels[labels.unknown != 1].img.tolist(), 20))
+#     # good_users = np.array(labels[labels.unknown != 1].img.tolist())
+#     for train_index, test_index in k_fold.split(good_users):
+#         train_x = good_users[train_index]
+#         test_x = good_users[test_index]
+#
+#         def test_accuracy(a):
+#             set_detection_parameters_optimizer(a[0], a[1], a[2], a[3], a[4])
+#             correct_count = 0
+#             for user_id in test_x:
+#                 temp_user = select_one_user(main_df, user_id)
+#                 user_label = labels[labels.img == user_id].all()
+#                 temp_detection = new_detect(temp_user)
+#                 is_mining = temp_detection.mining.sum() > 0
+#                 is_theft = temp_detection.theft.sum() > 0
+#                 if user_label.normal:
+#                     if not is_mining or not is_theft:
+#                         correct_count += 1
+#                 elif user_label.mining:
+#                     if is_mining:
+#                         correct_count += 1
+#                 elif user_label.theft:
+#                     if is_theft:
+#                         correct_count += 1
+#                 elif is_theft or is_mining:
+#                     correct_count += 1
+#             return correct_count / len(good_users)
+#
+#         def train_accuracy(a):
+#             set_detection_parameters_optimizer(a[0], a[1], a[2], a[3], a[4])
+#             correct_count = 0
+#             for user_id in train_x:
+#                 temp_user = select_one_user(main_df, user_id)
+#                 user_label = labels[labels.img == user_id].all()
+#                 temp_detection = new_detect(temp_user)
+#                 is_mining = temp_detection.mining.sum() > 0
+#                 is_theft = temp_detection.theft.sum() > 0
+#                 if user_label.normal:
+#                     if not is_mining or not is_theft:
+#                         correct_count += 1
+#                 elif user_label.mining:
+#                     if is_mining:
+#                         correct_count += 1
+#                 elif user_label.theft:
+#                     if is_theft:
+#                         correct_count += 1
+#                 elif is_theft or is_mining:
+#                     correct_count += 1
+#             return 1 - (correct_count / len(good_users))
+#
+#         model = ga(function=train_accuracy, dimension=5, variable_type_mixed=vartype, variable_boundaries=varbound,
+#                    function_timeout=1000, algorithm_parameters=algorithm_param, convergence_curve=False)
+#         model.run()
+#         print(test_accuracy(model.best_variable))
 
 
 resample_value = "{}H".format(24)
@@ -432,8 +432,8 @@ std_coe = 2.5
 m = 20
 n = 15
 
-main_df = load_data_frame()
-labels = pd.read_csv("my_data/labels.csv")
-good_users = np.array(labels[labels.unknown != 1].img.tolist())
+# main_df = load_data_frame()
+# labels = pd.read_csv("my_data/labels.csv")
+# good_users = np.array(labels[labels.unknown != 1].img.tolist())
 
-run_k_fold()
+# run_k_fold()
