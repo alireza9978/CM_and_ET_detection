@@ -1,4 +1,5 @@
 import pickle
+from geneticalgorithm import geneticalgorithm as ga
 
 from force_result.three import *
 
@@ -7,6 +8,7 @@ with open('user_clusters.pkl', 'rb') as f:
 labels = pd.read_csv("my_data/labels.csv")
 df = load_data_frame()
 good_users = np.array(labels[labels.unknown != 1].img.tolist())
+df = df[df.id.isin(good_users)]
 
 varbound = np.array([[1, 7], [10, 50], [1, 5], [0, 30], [0.5, 1]])
 vartype = np.array([['int'], ['int'], ['real'], ['int'], ["real"]])
@@ -28,14 +30,14 @@ for temp_users_id in users_clusters:
     def accuracy(a):
         set_detection_parameters_optimizer(a[0], a[1], a[2], a[3], a[4])
         global temp_user_df
+        temp_detection = new_detect(temp_user_df)
         train_x = temp_user_df.id.unique()
         correct_count = 0
         for user_id in train_x:
-            temp_user = select_one_user(df, user_id)
+            temp_user = select_one_user(temp_detection, user_id)
             user_label = labels[labels.img == user_id].all()
-            temp_detection = new_detect(temp_user)
-            is_mining = temp_detection.mining.sum() > 0
-            is_theft = temp_detection.theft.sum() > 0
+            is_mining = temp_user.mining.sum() > 0
+            is_theft = temp_user.theft.sum() > 0
             if user_label.normal:
                 if not is_mining or not is_theft:
                     correct_count += 1
