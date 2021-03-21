@@ -1,9 +1,12 @@
+import multiprocessing
 import random
+import time
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 from persiantools.jdatetime import JalaliDateTime
 
 
@@ -252,16 +255,16 @@ def plot_detection(temp_df: pd.DataFrame, mining_prediction: pd.DataFrame, theft
 
 
 def calculate_bands_new_method(temp_df: pd.DataFrame):
-    temp_df = temp_df.resample(resample_value).agg({"usage": "sum"})
-    usage = temp_df.usage
-    temp_df["mining"] = False
-    temp_df["theft"] = False
-    temp_df["to_use"] = True
+    my_temp_df = temp_df.resample(resample_value).agg({"usage": "sum"})
+    usage = my_temp_df.usage
+    my_temp_df["mining"] = False
+    my_temp_df["theft"] = False
+    my_temp_df["to_use"] = True
     start = moving_avg_windows_size
     while start < usage.shape[0]:
         temp_data = usage[start]
         temp_window = usage.iloc[start - moving_avg_windows_size:][
-                          temp_df.iloc[start - moving_avg_windows_size:]["to_use"]][0:moving_avg_windows_size].copy()
+                          my_temp_df.iloc[start - moving_avg_windows_size:]["to_use"]][0:moving_avg_windows_size].copy()
 
         temp_avg = temp_window.mean()
         temp_std = temp_window.std()
@@ -278,8 +281,8 @@ def calculate_bands_new_method(temp_df: pd.DataFrame):
                     break
                 step += 1
             if step > 1:
-                temp_df["mining"][start + 1:start + step + m] = (usage[start + 1:start + step + m] > temp_upper)
-                temp_df["to_use"][start + 1:start + step + m] = (usage[start + 1:start + step + m] < temp_upper)
+                my_temp_df["mining"].iloc[start + 1:start + step + m] = (usage[start + 1:start + step + m] > temp_upper)
+                my_temp_df["to_use"].iloc[start + 1:start + step + m] = (usage[start + 1:start + step + m] < temp_upper)
                 start = start + moving_avg_windows_size + step
 
         if temp_data < temp_lower:
@@ -292,12 +295,12 @@ def calculate_bands_new_method(temp_df: pd.DataFrame):
                     break
                 step += 1
             if step > 1:
-                temp_df["theft"][start + 1:start + step + m] = (usage[start + 1:start + step + m] < temp_lower)
-                temp_df["to_use"][start + 1:start + step + m] = (usage[start + 1:start + step + m] > temp_lower)
+                my_temp_df["theft"].iloc[start + 1:start + step + m] = (usage[start + 1:start + step + m] < temp_lower)
+                my_temp_df["to_use"].iloc[start + 1:start + step + m] = (usage[start + 1:start + step + m] > temp_lower)
                 start = start + moving_avg_windows_size + step
 
         start += 1
-    return temp_df
+    return my_temp_df
 
 
 def plot_new_detection(temp_df: pd.DataFrame, temp_user_id: int, fig_name: str):
@@ -325,9 +328,14 @@ def plot_new_detection(temp_df: pd.DataFrame, temp_user_id: int, fig_name: str):
     plt.close()
 
 
+def apply_parallel(data_frame_grouped, func):
+    result_list = Parallel(n_jobs=multiprocessing.cpu_count())(
+        delayed(func)(group) for name, group in data_frame_grouped)
+    return pd.concat(result_list)
+
+
 def new_detect(temp_df: pd.DataFrame):
-    temp_df = temp_df.groupby(["id"]).apply(calculate_bands_new_method)
-    temp_df = temp_df.reset_index(level="id", drop=False)
+    temp_df = apply_parallel(temp_df.groupby(["id"]), calculate_bands_new_method)
     return temp_df
 
 
@@ -340,5 +348,8 @@ n = 15
 main_df = load_data_frame()
 labels = pd.read_csv("my_data/labels.csv")
 good_users = np.array(labels[labels.unknown != 1].img.tolist())
+main_df = main_df[main_df.id.isin(good_users)]
 
+start_time = time.time()
 print(new_detect(main_df))
+print("--- %s seconds ---" % (time.time() - start_time))
