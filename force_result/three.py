@@ -257,6 +257,7 @@ def plot_detection(temp_df: pd.DataFrame, mining_prediction: pd.DataFrame, theft
 def calculate_bands_new_method(temp_df: pd.DataFrame):
     my_temp_df = temp_df.resample(resample_value).agg({"usage": "sum"})
     usage = my_temp_df.usage
+    my_temp_df["id"] = temp_df.id
     my_temp_df["mining"] = False
     my_temp_df["theft"] = False
     my_temp_df["to_use"] = True
@@ -264,7 +265,7 @@ def calculate_bands_new_method(temp_df: pd.DataFrame):
     while start < usage.shape[0]:
         temp_data = usage[start]
         temp_window = usage.iloc[start - moving_avg_windows_size:][
-                          my_temp_df.iloc[start - moving_avg_windows_size:]["to_use"]][0:moving_avg_windows_size].copy()
+                          my_temp_df.iloc[start - moving_avg_windows_size:]["to_use"]][0:moving_avg_windows_size]
 
         temp_avg = temp_window.mean()
         temp_std = temp_window.std()
@@ -281,8 +282,8 @@ def calculate_bands_new_method(temp_df: pd.DataFrame):
                     break
                 step += 1
             if step > 1:
-                my_temp_df["mining"].iloc[start + 1:start + step + m] = (usage[start + 1:start + step + m] > temp_upper)
-                my_temp_df["to_use"].iloc[start + 1:start + step + m] = (usage[start + 1:start + step + m] < temp_upper)
+                my_temp_df.iloc[start + 1:start + step + m, 2] = (usage[start + 1:start + step + m] > temp_upper)
+                my_temp_df.iloc[start + 1:start + step + m, 4] = (usage[start + 1:start + step + m] < temp_upper)
                 start = start + moving_avg_windows_size + step
 
         if temp_data < temp_lower:
@@ -295,8 +296,8 @@ def calculate_bands_new_method(temp_df: pd.DataFrame):
                     break
                 step += 1
             if step > 1:
-                my_temp_df["theft"].iloc[start + 1:start + step + m] = (usage[start + 1:start + step + m] < temp_lower)
-                my_temp_df["to_use"].iloc[start + 1:start + step + m] = (usage[start + 1:start + step + m] > temp_lower)
+                my_temp_df.iloc[start + 1:start + step + m, 3] = (usage[start + 1:start + step + m] < temp_lower)
+                my_temp_df.iloc[start + 1:start + step + m, 4] = (usage[start + 1:start + step + m] > temp_lower)
                 start = start + moving_avg_windows_size + step
 
         start += 1
