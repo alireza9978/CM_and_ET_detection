@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from persiantools.jdatetime import JalaliDateTime
+from sklearn.model_selection import train_test_split
 
 
 def load_data_frame():
@@ -18,6 +19,12 @@ def load_data_frame():
     temp_df = temp_df.groupby(["id"]).apply(calculate_usage)
     temp_df = temp_df.reset_index(level="id", drop=False)
     return temp_df
+
+
+def get_train_test():
+    temp_df = load_data_frame()
+    train_id, test_id = train_test_split(temp_df.id.unique(), test_size=0.25, random_state=42)
+    return temp_df[temp_df.id.isin(train_id)], temp_df[temp_df.id.isin(test_id)]
 
 
 def select_one_user(temp_df: pd.DataFrame, user_id: int):
@@ -346,11 +353,11 @@ std_coe = 2.5
 m = 20
 n = 15
 
-main_df = load_data_frame()
-labels = pd.read_csv("my_data/labels.csv")
-good_users = np.array(labels[labels.unknown != 1].img.tolist())
-main_df = main_df[main_df.id.isin(good_users)]
-
-start_time = time.time()
-print(new_detect(main_df))
-print("--- %s seconds ---" % (time.time() - start_time))
+# main_df = load_data_frame()
+# labels = pd.read_csv("my_data/labels.csv")
+# good_users = np.array(labels[labels.unknown != 1].img.tolist())
+# main_df = main_df[main_df.id.isin(good_users)]
+#
+# start_time = time.time()
+# print(new_detect(main_df))
+# print("--- %s seconds ---" % (time.time() - start_time))
