@@ -1,6 +1,5 @@
 import multiprocessing
 import random
-import time
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -21,9 +20,15 @@ def load_data_frame():
     return temp_df
 
 
+def get_good_users_id():
+    labels = pd.read_csv("my_data/labels.csv")
+    good_users = np.array(labels[labels.unknown != 1].img.tolist())
+    return good_users
+
+
 def get_train_test():
     temp_df = load_data_frame()
-    train_id, test_id = train_test_split(temp_df.id.unique(), test_size=0.25, random_state=42)
+    train_id, test_id = train_test_split(temp_df.id.unique(), test_size=0.25, random_state=4242)
     return temp_df[temp_df.id.isin(train_id)], temp_df[temp_df.id.isin(test_id)]
 
 
@@ -354,9 +359,7 @@ m = 20
 n = 15
 
 # main_df = load_data_frame()
-# labels = pd.read_csv("my_data/labels.csv")
-# good_users = np.array(labels[labels.unknown != 1].img.tolist())
-# main_df = main_df[main_df.id.isin(good_users)]
+
 #
 # start_time = time.time()
 # print(new_detect(main_df))

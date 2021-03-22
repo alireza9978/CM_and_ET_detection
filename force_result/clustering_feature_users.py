@@ -51,6 +51,7 @@ for i, model in enumerate(models):
     y_set = set(y_prediction)
     if len(y_set) > 1:
         sil = metrics.silhouette_score(x_train, y_prediction)
+        print(sil)
         silhouette_scores.append(sil)
         if best is None or sil > best_value:
             best = model
@@ -61,19 +62,18 @@ for i, model in enumerate(models):
 y_train_prediction = best.predict(x_train)
 y_test_prediction = best.predict(x_test)
 y_set = set(y_train_prediction)
-df = load_data_frame()
-df = df[df.id.isin(good_users)]
 train_users_clusters = []
 test_users_clusters = []
 for cluster in y_set:
-    train_user_cluster_id = train_users_id[y_train_prediction == cluster]
-    test_user_cluster_id = train_users_id[y_train_prediction == cluster]
-    print(f"train_user_cluster_id {len(train_user_cluster_id)}")
-    print(f"test_user_cluster_id {len(test_user_cluster_id)}")
+    print("here")
+    temp = train_users_id[y_train_prediction == cluster]
+    train_user_cluster_id = temp[temp.isin(good_users)]
+    temp = test_users_id[y_test_prediction == cluster]
+    test_user_cluster_id = temp[temp.isin(good_users)]
     train_users_clusters.append(train_user_cluster_id)
     test_users_clusters.append(test_user_cluster_id)
-    print("train_cluster {} count = {}".format(cluster, (y_train_prediction == cluster).sum()))
-    print("test_cluster {} count = {}".format(cluster, (y_test_prediction == cluster).sum()))
+    print("train_cluster {} count = {}".format(cluster, train_user_cluster_id.shape))
+    print("test_cluster {} count = {}".format(cluster, test_user_cluster_id.shape))
 print(best_value)
 
 with open('train_user_clusters.pkl', 'wb') as f:
