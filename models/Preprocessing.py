@@ -12,7 +12,7 @@ def load_data_frame(path: str, persian_date: bool, accumulative_usage: bool, fil
     if len(temp_df.columns) == 3:
         return _load_data_frame_hourly(temp_df, persian_date, accumulative_usage, fill_nan)
     if len(temp_df.columns) == 6:
-        return _load_data_frame_monthly(temp_df, persian_date, accumulative_usage, fill_nan)
+        return _load_data_frame_monthly(temp_df, persian_date, fill_nan)
 
 
 def _load_data_frame_hourly(temp_df: pd.DataFrame, persian_date: bool, accumulative_usage: bool, fill_nan: FillNanMode):
@@ -27,18 +27,17 @@ def _load_data_frame_hourly(temp_df: pd.DataFrame, persian_date: bool, accumulat
     # convert date to pandas datetime
     temp_df.date = pd.to_datetime(temp_df.date)
 
-    # set date as index for usage and nan operations
-    temp_df = temp_df.set_index("date")
-
-    # convert usage to Non-cumulative
-    if accumulative_usage:
-        temp_df["usage"] = temp_df.resample("1H").agg({"usage": "max"})
-        temp_df = temp_df.groupby(["id"]).apply(_calculate_usage_hourly)
+    # sort values of data set
+    temp_df = temp_df.sort_values(by=["id", "date"])
 
     # fill nan based on implemented method
     fill_nan_method = fill_nan.get_method()
     if fill_nan_method is not None:
         temp_df = fill_nan_method(temp_df)
+
+    # convert usage to Non-cumulative
+    if accumulative_usage:
+        temp_df = temp_df.groupby(["id"]).apply(_calculate_usage_hourly)
 
     # reset index and return clean data set
     temp_df = temp_df.reset_index(drop=False)
@@ -48,12 +47,19 @@ def _load_data_frame_hourly(temp_df: pd.DataFrame, persian_date: bool, accumulat
 
 
 def _calculate_usage_hourly(temp_df: pd.DataFrame):
+    # set date as index for usage operation
+    temp_df = temp_df.set_index("date")
+
+    # make all data set frequency 1 hour
+    temp_df["usage"] = temp_df.resample("1H").agg({"usage": "max"})
+
     temp_df["usage"] = temp_df["usage"] - temp_df["usage"].shift(1)
+    temp_df = temp_df.iloc[1:]["usage"]
+
     return temp_df
 
 
-def _load_data_frame_monthly(temp_df: pd.DataFrame, persian_date: bool, accumulative_usage: bool,
-                             fill_nan: FillNanMode):
+def _load_data_frame_monthly(temp_df: pd.DataFrame, persian_date: bool, fill_nan: FillNanMode):
     # sort values of data set
     temp_df = temp_df.sort_values(by=["id", "start_date"])
 
@@ -74,15 +80,12 @@ def _load_data_frame_monthly(temp_df: pd.DataFrame, persian_date: bool, accumula
     # remove user that have cycle with length less than 1 day
     temp_df = temp_df[~temp_df.id.isin(temp_df[temp_df.days < 1].id.unique())]
 
-    if accumulative_usage:
-        temp_df = temp_df.groupby(["id"]).apply(_calculate_usage_monthly)
-
-    temp_df = _clean_data(temp_df)
-
     # fill nan based on implemented method
     fill_nan_method = fill_nan.get_method()
     if fill_nan_method is not None:
         temp_df = fill_nan_method(temp_df)
+
+    temp_df = _clean_data(temp_df)
 
     # reset index and return clean data set
     temp_df = temp_df.reset_index(drop=False)
