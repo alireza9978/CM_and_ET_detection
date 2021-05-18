@@ -440,7 +440,7 @@ class LabelerWindow(QWidget):
 
             # create keyboard shortcut event (set label)
             # shortcuts start getting overwritten when number of labels >9
-            label_kbs = QShortcut(QKeySequence(f"{i+1 % 10}"), self)
+            label_kbs = QShortcut(QKeySequence(f"{i + 1 % 10}"), self)
             label_kbs.activated.connect(lambda x=label: self.set_label(x))
 
             # place button in GUI (create multiple columns if there is more than 10 button)
