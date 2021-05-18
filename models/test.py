@@ -2,14 +2,13 @@ from models.Preprocessing import load_data_frame
 from models.detection import detect, set_detection_parameters
 from models.fill_nan import FillNanMode
 from models.visualization import plot_detection
-from models.filters import select_random_user
 
 if __name__ == '__main__':
-    path = "../sample_data/hourly_sample_accumulative-usage_gregorian-date.csv"
+    path = "../my_data/all_data.csv"
     hourly_df = load_data_frame(path, False, True, FillNanMode.drop)
 
-    path = "../sample_data/monthly_sample_non-accumulative-usage_gregorian-date.csv"
-    monthly_df = load_data_frame(path, True, False, FillNanMode.without)
+    # path = "../sample_data/monthly_sample_non-accumulative-usage_gregorian-date.csv"
+    # monthly_df = load_data_frame(path, True, False, FillNanMode.without)
 
     # hourly_df = select_random_user(hourly_df)
     set_detection_parameters("1D", 30, 2.5, 10, 8)

@@ -15,7 +15,8 @@ def _calculate_bands(temp_df: pd.DataFrame):
     start = moving_avg_windows_size
     while start < usage.shape[0]:
         temp_data = usage[start]
-        temp_window = usage.iloc[start - moving_avg_windows_size:][my_temp_df.iloc[start - moving_avg_windows_size:]["to_use"]][0:moving_avg_windows_size]
+        temp_window = usage.iloc[start - moving_avg_windows_size:][
+                          my_temp_df.iloc[start - moving_avg_windows_size:]["to_use"]][0:moving_avg_windows_size]
 
         temp_avg = temp_window.mean()
         temp_std = temp_window.std()

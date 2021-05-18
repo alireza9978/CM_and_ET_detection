@@ -1,12 +1,19 @@
 import pickle
+
+import numpy as np
+import pandas as pd
 from geneticalgorithm import geneticalgorithm as ga
 
-from force_result.three import *
+from models.Preprocessing import load_data_frame
+from models.detection import set_detection_parameters, detect
+from models.fill_nan import FillNanMode
+from models.filters import select_one_user
 
 with open('user_clusters.pkl', 'rb') as f:
     users_clusters = pickle.load(f)
 labels = pd.read_csv("my_data/labels.csv")
-df = load_data_frame()
+
+df = load_data_frame("../my_data/all_data.csv", False, True, FillNanMode.drop)
 good_users = np.array(labels[labels.unknown != 1].img.tolist())
 df = df[df.id.isin(good_users)]
 
@@ -28,9 +35,9 @@ for temp_users_id in users_clusters:
 
 
     def accuracy(a):
-        set_detection_parameters_optimizer(a[0], a[1], a[2], a[3], a[4])
+        set_detection_parameters(a[0], a[1], a[2], a[3], a[4])
         global temp_user_df
-        temp_detection = new_detect(temp_user_df)
+        temp_detection = detect(temp_user_df)
         train_x = temp_user_df.id.unique()
         correct_count = 0
         for user_id in train_x:

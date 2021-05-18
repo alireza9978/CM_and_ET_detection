@@ -1,14 +1,25 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from k_means_constrained import KMeansConstrained
 from sklearn import metrics
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from force_result.three import *
+from models.Preprocessing import load_data_frame
+from models.fill_nan import FillNanMode
 
 
 def vector(temp_df: pd.DataFrame):
     temp_df = temp_df.resample("7D").agg({"usage": "sum"})
     return pd.DataFrame(pd.Series([temp_df.usage.mean(), temp_df.usage.max(), temp_df.usage.min(), temp_df.usage.std(),
                                    temp_df.usage.median()])).transpose()
+
+
+def get_train_test():
+    temp_df = load_data_frame("../my_data/all_data.csv", False, True, FillNanMode.drop)
+    train_id, test_id = train_test_split(temp_df.id.unique(), test_size=0.25, random_state=4242)
+    return temp_df[temp_df.id.isin(train_id)], temp_df[temp_df.id.isin(test_id)]
 
 
 labels = pd.read_csv("my_data/labels.csv")
