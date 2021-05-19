@@ -4,7 +4,7 @@ import jdatetime
 import pandas as pd
 from joblib import Parallel, delayed
 
-from models.exception import DateException, HourlyDateException, MonthlyDateException
+from models.exception import HourlyDateException, MonthlyDateException, WrongColumnsException, WrongDateFormatException
 from models.fill_nan import FillNanMode
 
 
@@ -14,6 +14,7 @@ def load_data_frame(path: str, persian_date: bool, accumulative_usage: bool, fil
         return _load_data_frame_hourly(temp_df, persian_date, accumulative_usage, fill_nan)
     if len(temp_df.columns) == 6:
         return _load_data_frame_monthly(temp_df, persian_date, fill_nan)
+    raise WrongColumnsException()
 
 
 def _load_data_frame_hourly(temp_df: pd.DataFrame, persian_date: bool, accumulative_usage: bool, fill_nan: FillNanMode):
@@ -133,22 +134,28 @@ def _clean_user_df(inner_df: pd.DataFrame):
 
 def _convert_date_time_hourly(x):
     # expected format %Y-%M-%d %h:%m:%s
-    year = int(str(x)[0:4])
-    month = int(str(x)[5:7])
-    day = int(str(x)[8:10])
-    hour = int(str(x)[11:13])
-    minute = int(str(x)[14:16])
-    second = int(str(x)[17:19])
-    if month == 12 and day == 30:
-        day = 29
-    return jdatetime.datetime(year, month, day, hour, minute, second).togregorian()
+    try:
+        year = int(str(x)[0:4])
+        month = int(str(x)[5:7])
+        day = int(str(x)[8:10])
+        hour = int(str(x)[11:13])
+        minute = int(str(x)[14:16])
+        second = int(str(x)[17:19])
+        if month == 12 and day == 30:
+            day = 29
+        return jdatetime.datetime(year, month, day, hour, minute, second).togregorian()
+    except:
+        raise WrongDateFormatException()
 
 
 def _convert_date_time_monthly(x):
     # expected format %Y-%M-%d
-    year = int(str(x)[0:4])
-    month = int(str(x)[5:7])
-    day = int(str(x)[8:10])
-    if month == 12 and day == 30:
-        day = 29
-    return jdatetime.date(year, month, day).togregorian()
+    try:
+        year = int(str(x)[0:4])
+        month = int(str(x)[5:7])
+        day = int(str(x)[8:10])
+        if month == 12 and day == 30:
+            day = 29
+        return jdatetime.date(year, month, day).togregorian()
+    except:
+        raise WrongDateFormatException()
