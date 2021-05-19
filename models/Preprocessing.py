@@ -4,6 +4,7 @@ import jdatetime
 import pandas as pd
 from joblib import Parallel, delayed
 
+from models.exception import DateException, HourlyDateException, MonthlyDateException
 from models.fill_nan import FillNanMode
 
 
@@ -22,8 +23,10 @@ def _load_data_frame_hourly(temp_df: pd.DataFrame, persian_date: bool, accumulat
     # todo try-catch for date error
     # convert date to gregorian
     if persian_date:
-        temp_df['date'] = temp_df['date'].apply(lambda x: _convert_date_time_hourly(x))
-
+        try:
+            temp_df['date'] = temp_df['date'].apply(lambda x: _convert_date_time_hourly(x))
+        except:
+            raise HourlyDateException()
     # convert date to pandas datetime
     temp_df.date = pd.to_datetime(temp_df.date)
 
@@ -66,8 +69,11 @@ def _load_data_frame_monthly(temp_df: pd.DataFrame, persian_date: bool, fill_nan
     # todo try-catch for date error
     # convert date to gregorian
     if persian_date:
-        temp_df['start_date'] = temp_df['start_date'].apply(lambda x: _convert_date_time_monthly(x))
-        temp_df['end_date'] = temp_df['end_date'].apply(lambda x: _convert_date_time_monthly(x))
+        try:
+            temp_df['start_date'] = temp_df['start_date'].apply(lambda x: _convert_date_time_monthly(x))
+            temp_df['end_date'] = temp_df['end_date'].apply(lambda x: _convert_date_time_monthly(x))
+        except:
+            raise MonthlyDateException()
 
     # convert date to pandas datetime
     temp_df["start_date"] = pd.to_datetime(temp_df["start_date"])
