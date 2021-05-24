@@ -63,6 +63,9 @@ def _apply_parallel(data_frame_grouped, func):
 
 def detect(temp_df: pd.DataFrame):
     temp_df = _apply_parallel(temp_df.groupby(["id"]), _calculate_bands)
+    x = temp_df[["mining", "theft", "id"]].reset_index().groupby(["id"]).sum()
+    suspect = x[(x.mining > 0) | (x.theft > 0)].reset_index()['id'].unique()
+    temp_df = temp_df[temp_df.id.isin(suspect)]
     return temp_df
 
 
