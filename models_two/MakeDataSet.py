@@ -1,5 +1,6 @@
 import multiprocessing
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
@@ -35,14 +36,14 @@ def make_data_set_single_user(temp_df: pd.DataFrame):
     temp_df = temp_df.set_index("date").resample(RESAMPLE_VALUE).agg({"usage": "sum", "anomaly": np.any})
     temp_df = temp_df.reset_index(drop=True)
 
+    # using fourier
+    transformed = np.fft.fft(temp_df.usage.to_numpy())
+    transformed[temp_df.shape[0] // 20:] = 0
+    temp_df.usage = np.abs(np.fft.ifft(transformed))
+
     # apply min max scaler
     scaler_model = MinMaxScaler()
     temp_df.usage = scaler_model.fit_transform(temp_df.usage.to_numpy().reshape(-1, 1)).squeeze()
-
-    # using fourier
-    transformed = np.fft.fft(temp_df.usage.to_numpy(), 1000)
-    transformed[500:] = 0
-    temp_df.usage = np.abs(np.fft.ifft(transformed, temp_df.shape[0]))
 
     # select segments with correct length
     temp_df["segment"] = temp_df.index // SEGMENT_LENGTH
