@@ -1,14 +1,13 @@
 import datetime
-
+from pathlib import Path
 import pandas as pd
 
 
 def load_file():
-    path = "/mnt/79e06c5d-876b-45fd-a066-c9aac1a1c932/Dataset/Power Distribution/Irish/Files/CER Electricity Revised " \
-           "March 2012/"
+    path = "H:/Projects/Pycharm/Datasets/Power Distribution/Irish/Files/CER Electricity Revised March 2012/"
     result_df = pd.DataFrame()
     for i in range(1, 7):
-        test_path = path + "File{}.txt".format(i)
+        test_path = Path(path + "File{}.txt".format(i))
         # temp_df = next(pd.read_csv(test_path, sep=" ", header=None, chunksize=50000))
         temp_df = pd.read_csv(test_path, sep=" ", header=None)
         temp_df.columns = ["id", "date", "usage"]
