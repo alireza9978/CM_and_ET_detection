@@ -21,7 +21,7 @@ def reduce_usage_randomly(temp_df: pd.DataFrame):
 
     temp_df.loc[temp_start:temp_end, 'usage'] = temp_df.loc[temp_start:temp_end, 'usage'] * reduction_coe
     temp_df["anomaly"] = False
-    temp_df[temp_start:temp_end, "anomaly"] = True
+    temp_df.loc[temp_start:temp_end, "anomaly"] = True
 
     return temp_df
 
