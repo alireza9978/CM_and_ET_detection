@@ -8,8 +8,12 @@ from models.exception import HourlyDateException, MonthlyDateException, WrongCol
 from models.fill_nan import FillNanMode
 
 
-def load_data_frame(path: str, persian_date: bool, accumulative_usage: bool, fill_nan: FillNanMode):
-    temp_df = pd.read_csv(path)
+def load_data_frame(path: str, persian_date: bool, accumulative_usage: bool, fill_nan: FillNanMode, small_part=False,
+                    chunk_size=1000000):
+    if small_part:
+        temp_df = next(pd.read_csv(path, chunksize=chunk_size))
+    else:
+        temp_df = pd.read_csv(path)
     if len(temp_df.columns) == 3:
         return _load_data_frame_hourly(temp_df, persian_date, accumulative_usage, fill_nan)
     if len(temp_df.columns) == 6:
