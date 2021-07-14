@@ -13,3 +13,11 @@ def plot(temp_df: pd.DataFrame):
         plt.savefig("my_figures/mashhad_filter_suspect/{}_{}.jpeg".format(user_id, resample_value))
         plt.close()
 
+
+def plot_in_one(temp_df: pd.DataFrame):
+    def sample_plot(inner_df: pd.DataFrame):
+        plt.plot(inner_df.index, inner_df.usage)
+
+    temp_df.set_index("date").groupby("id").apply(sample_plot)
+    plt.savefig("my_figures/all_data.jpeg")
+    plt.close()
