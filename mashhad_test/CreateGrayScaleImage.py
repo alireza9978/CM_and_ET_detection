@@ -36,7 +36,6 @@ def make_data_set_single_user(temp_df: pd.DataFrame):
     scaler_model = MinMaxScaler(feature_range=(0, 255))
     temp_df.usage = scaler_model.fit_transform(temp_df.usage.to_numpy().reshape(-1, 1)).squeeze()
 
-
     # select segments with correct length
     temp_df["segment"] = temp_df.index // SEGMENT_LENGTH
     good_segment = temp_df[['usage', 'segment']].groupby("segment").count() == SEGMENT_LENGTH
@@ -58,5 +57,6 @@ def make_data_set_single_user(temp_df: pd.DataFrame):
     plt.close()
 
 
-# df.groupby("id").apply(make_data_set_single_user)
-_apply_parallel(df.groupby("id"), make_data_set_single_user)
+if __name__ == '__main__':
+    # df.groupby("id").apply(make_data_set_single_user)
+    _apply_parallel(df.groupby("id"), make_data_set_single_user)
