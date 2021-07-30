@@ -1,4 +1,5 @@
 from multiprocessing import cpu_count
+from pathlib import Path
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -15,8 +16,12 @@ from models_two.LinkedList import Node, SLinkedList
 path = "/mnt/79e06c5d-876b-45fd-a066-c9aac1a1c932/Dataset/Power Distribution/irish.csv"
 df = load_data_frame(path, False, False, FillNanMode.linear_auto_fill, True)
 df = data_frame_agg(df, "1D")
+users_ids = df.id.unique()
+date_df = df.set_index("date")
 df = to_time_series_dataset(df.groupby("id").apply(lambda x: x.usage.to_numpy()).to_numpy())
 df = df.reshape(df.shape[0], df.shape[1])
+
+
 # print(df.shape)
 
 
@@ -79,6 +84,24 @@ def print_clusters(clusters):
     print()
 
 
+def save_figures(clusters, state):
+    for i, cluster in enumerate(clusters[df.shape[0]:]):
+        if cluster:
+            Path("my_figures/irish_clustering_state/{}".format(state)).mkdir(parents=True, exist_ok=True)
+
+            fig, axe = plt.subplots(1, 1, figsize=(10, 5))
+            for user in cluster.list():
+                user_id = users_ids[user]
+                axe.plot(date_df[date_df.id == user_id]["usage"], label=str(user_id))
+
+            axe.legend()
+            for label in axe.get_xticklabels():
+                label.set_rotation(20)
+                label.set_horizontalalignment('right')
+            plt.savefig("my_figures/irish_clustering_state/{}/cluster_{}.jpeg".format(state, i))
+            plt.close()
+
+
 clusters_list = [SLinkedList(Node(i)) for i in range(df.shape[0])]
 clusters_count = df.shape[0]
 
@@ -94,6 +117,8 @@ for iteration in range(df.shape[0] - 1):
     distances.append(distance)
     counts.append(clusters_list[-1].size())
     # print_clusters(clusters_list)
+    if clusters_count > 10:
+        save_figures(clusters_list, clusters_count)
     clusters_count -= 1
 
 children = np.array(children)
