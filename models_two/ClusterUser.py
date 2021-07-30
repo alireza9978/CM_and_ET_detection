@@ -2,6 +2,8 @@ from multiprocessing import cpu_count
 
 import numpy as np
 from joblib import Parallel, delayed
+from matplotlib import pyplot as plt
+from scipy.cluster.hierarchy import dendrogram
 from tslearn.metrics import dtw
 from tslearn.utils import to_time_series_dataset
 
@@ -15,7 +17,7 @@ df = load_data_frame(path, False, False, FillNanMode.linear_auto_fill, True)
 df = data_frame_agg(df, "1D")
 df = to_time_series_dataset(df.groupby("id").apply(lambda x: x.usage.to_numpy()).to_numpy())
 df = df.reshape(df.shape[0], df.shape[1])
-print(df.shape)
+# print(df.shape)
 
 
 def process(i, j):
@@ -34,8 +36,8 @@ distance_matrix[distance_matrix == 0] = np.inf
 
 def find_minimum_distance(matrix):
     index = np.unravel_index(np.argmin(matrix, axis=None), matrix.shape)
-    return index
-    # value = distance_matrix[index[0]][index[1]]
+    value = matrix[index[0]][index[1]]
+    return index, value
     # pass
 
 
@@ -43,7 +45,9 @@ def merge_two_cluster(index):
     minimum = min(index[0], index[1])
     maximum = max(index[0], index[1])
     clusters_list[minimum].add_all(clusters_list[maximum])
+    clusters_list.append(clusters_list[minimum])
     clusters_list[maximum] = None
+    clusters_list[minimum] = None
 
 
 def update_distance_matrix(clusters):
@@ -78,9 +82,29 @@ def print_clusters(clusters):
 clusters_list = [SLinkedList(Node(i)) for i in range(df.shape[0])]
 clusters_count = df.shape[0]
 
-for iteration in range(df.shape[0]):
+children = []
+distances = []
+counts = []
+
+for iteration in range(df.shape[0] - 1):
     temp_distance_matrix = update_distance_matrix(clusters_list)
-    nearest_cluster = find_minimum_distance(temp_distance_matrix)
+    nearest_cluster, distance = find_minimum_distance(temp_distance_matrix)
     merge_two_cluster(nearest_cluster)
-    print_clusters(clusters_list)
+    children.append(nearest_cluster)
+    distances.append(distance)
+    counts.append(clusters_list[-1].size())
+    # print_clusters(clusters_list)
     clusters_count -= 1
+
+children = np.array(children)
+distances = np.array(distances)
+counts = np.array(counts)
+# print(counts)
+
+plt.title('Hierarchical Clustering Dendrogram')
+# plot the top three levels of the dendrogram
+linkage_matrix = np.column_stack([children, distances, counts]).astype(float)
+# Plot the corresponding dendrogram
+dendrogram(linkage_matrix, truncate_mode='level', p=10)
+plt.xlabel("Number of points in node (or index of point if no parenthesis).")
+plt.show()

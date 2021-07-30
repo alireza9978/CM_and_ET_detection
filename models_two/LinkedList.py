@@ -53,3 +53,11 @@ class SLinkedList:
             out.append(temp_value.data_value)
             temp_value = temp_value.next_value
         return out
+
+    def size(self):
+        count = 0
+        temp_value = self.head_value
+        while temp_value is not None:
+            count += 1
+            temp_value = temp_value.next_value
+        return count
