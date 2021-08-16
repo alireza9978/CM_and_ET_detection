@@ -14,10 +14,12 @@ def plot(temp_df: pd.DataFrame):
         plt.close()
 
 
-def plot_in_one(temp_df: pd.DataFrame):
+def plot_in_one(temp_df: pd.DataFrame, index=""):
     def sample_plot(inner_df: pd.DataFrame):
-        plt.plot(inner_df.index, inner_df.usage)
+        user_id = inner_df.id.values[0]
+        plt.plot(inner_df.index, inner_df.usage, label=str(user_id))
 
     temp_df.set_index("date").groupby("id").apply(sample_plot)
-    plt.savefig("my_figures/all_data.jpeg")
+    plt.legend()
+    plt.savefig("my_figures/test/all_data_{}.jpeg".format(index))
     plt.close()
