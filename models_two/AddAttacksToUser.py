@@ -1,24 +1,20 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import random
+
+import numpy as np
+import pandas as pd
 
 
 def read_user():
     df = pd.read_csv('/content/gdrive/MyDrive/datasets/daily-electricity-usage/irish_grid.csv', delimiter=',')
 
     # plotting 1 week for 1 user
-    id = 1000
-    user = df.loc[(df['id'] == id)]
+    user_id = 1000
+    user = df.loc[(df['id'] == user_id)]
     user.drop(columns=['date', 'id'], inplace=True)
     print(user)
     return user
     # for i in range(7):
     #   plt.plot(user.iloc[i])
-
-
-
 
 
 # Attacks
@@ -35,12 +31,12 @@ def attack2(seg):
 
 # mean
 def attack3(seg):
-    return np.full((seg.shape), seg.mean())
+    return np.full(seg.shape, seg.mean())
 
 
 # fraction of mean
 def attack4(seg):
-    return np.full((seg.shape), seg.mean() * random.uniform(0.2, 0.8))
+    return np.full(seg.shape, seg.mean() * random.uniform(0.2, 0.8))
 
 
 # reverse
@@ -50,19 +46,20 @@ def attack5(seg):
 
 # zero
 def attack6(seg):
-    return np.zeros((seg.shape))
+    return np.zeros(seg.shape)
 
 
 def attack7(seg):
     pass
 
 
-def attack_generator(split_df, SPLIT_SIZE):
+def attack_generator(split_df, split_size):
     MIN_MALICIOUS_HOURS = 48
-    MAX_MALICIOUS_HOURS = SPLIT_SIZE * 24
+    MAX_MALICIOUS_HOURS = split_size * 24
 
     random_start = random.randint(0,
-                                  MAX_MALICIOUS_HOURS - MIN_MALICIOUS_HOURS)  # choose a random starting point for anomaly in all the hours with 48 hours minimum
+                                  MAX_MALICIOUS_HOURS - MIN_MALICIOUS_HOURS)  # choose a random starting point for
+    # anomaly in all the hours with 48 hours minimum
     affected = random.randint(MIN_MALICIOUS_HOURS,
                               MAX_MALICIOUS_HOURS - random_start)  # choose number of affected hours
     attack_list = [attack1, attack2, attack3, attack4, attack5, attack6]
@@ -98,7 +95,7 @@ if __name__ == '__main__':
     new_user = pd.DataFrame(changed_split_df_list)
     new_user.to_csv('/content/gdrive/MyDrive/datasets/daily-electricity-usage/user1000_week.csv')
     # dataset in the daily form
-    changed_split_df_list = [i.reshape(-1,24) for i in changed_split_df_list]
-    changed_split_df_array = np.concatenate( changed_split_df_list, axis=0 )
+    changed_split_df_list = [i.reshape(-1, 24) for i in changed_split_df_list]
+    changed_split_df_array = np.concatenate(changed_split_df_list, axis=0)
     new_user = pd.DataFrame(changed_split_df_array)
     new_user.to_csv('/content/gdrive/MyDrive/datasets/daily-electricity-usage/user1000_day.csv')
