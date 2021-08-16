@@ -1,10 +1,13 @@
+import random
+
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, recall_score, accuracy_score, precision_score
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow import keras
 from tensorflow.keras import layers
 
+from AddAttacksToUser import attack1, attack2, attack3, attack4, attack5, attack6
 from models.Preprocessing import load_data_frame
 from models.fill_nan import FillNanMode
 from models.filters import select_random_user
@@ -12,7 +15,7 @@ from models_two.Visualization import plot
 
 path = "/mnt/79e06c5d-876b-45fd-a066-c9aac1a1c932/Dataset/Power Distribution/irish.csv"
 df = load_data_frame(path, False, False, FillNanMode.linear_auto_fill, True)
-df = select_random_user(df)
+df, user_id = select_random_user(df)
 df.set_index("date").groupby("id").apply(plot)
 df = df.drop(columns=["id"]).set_index("date")
 
@@ -40,9 +43,18 @@ x_train = x_train.reshape((x_train.shape[0], x_train.shape[1], 1))
 print("Training input shape: ", x_train.shape)
 
 # x_train, x_test = train_test_split(x_train, test_size=0.3)
-division_point = int(x_train.shape[0] * 0.3)
+division_point = int(x_train.shape[0] * 0.5)
 x_test = x_train[division_point:]
 x_train = x_train[:division_point]
+
+y_test = []
+attacks = [attack1, attack2, attack3, attack4, attack5, attack6]
+for i in range(x_test.shape[0]):
+    if random.random() > 0.7:
+        x_test[i] = attacks[random.randint(0, 5)](x_test[i])
+        y_test.append(1)
+    else:
+        y_test.append(0)
 
 model = keras.Sequential(
     [
@@ -81,8 +93,19 @@ plt.plot(history.history["val_loss"], label="Validation Loss")
 plt.legend()
 plt.show()
 
-
 # Get train MAE loss.
+x_train_pred = model.predict(x_train)
+train_mae_loss = np.mean(np.abs(x_train_pred - x_train), axis=1)
+
+plt.hist(train_mae_loss, bins=50)
+plt.xlabel("Train MAE loss")
+plt.ylabel("No of samples")
+plt.show()
+
+# Get reconstruction loss threshold.
+threshold = np.max(train_mae_loss)
+print("Reconstruction error threshold: ", threshold)
+
 x_test_pred = model.predict(x_test)
 test_mae_loss = np.mean(np.abs(x_test_pred - x_test), axis=1)
 
@@ -91,11 +114,9 @@ plt.xlabel("Test MAE loss")
 plt.ylabel("No of samples")
 plt.show()
 
-# Get reconstruction loss threshold.
-threshold = np.max(test_mae_loss)
-print("Reconstruction error threshold: ", threshold)
-
-# Checking how the first sequence is learnt
-plt.plot(x_test[0])
-plt.plot(x_test_pred[0])
-plt.show()
+y_pred = test_mae_loss > threshold
+matrix = confusion_matrix(y_test, y_pred)
+print(matrix)
+print(accuracy_score(y_test, y_pred))
+print(precision_score(y_test, y_pred))
+print(recall_score(y_test, y_pred))
