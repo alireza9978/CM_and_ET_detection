@@ -34,3 +34,4 @@ stumpy~=1.8.0
 tensorflow~=2.5.1
 PyWavelets~=1.1.1
 pyts~=0.11.0
+ssqueezepy~=0.6.1
