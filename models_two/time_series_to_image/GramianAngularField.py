@@ -25,7 +25,7 @@ def transform(temp_df: pd.DataFrame):
             plt.imsave("my_figures/{}/{}_{}.jpeg".format(name, user_id, i), image)
             plt.close()
 
-    images = RecurrencePlot(dimension=SEGMENT_LENGTH, threshold="point", percentage=20).fit_transform(temp_df)
+    images = RecurrencePlot(dimension=1, threshold="point", percentage=20).fit_transform(temp_df)
     name = "RecurrencePlot"
     for i, image in enumerate(images):
         plt.imsave("my_figures/{}/{}_{}.jpeg".format(name, user_id, i), image)
