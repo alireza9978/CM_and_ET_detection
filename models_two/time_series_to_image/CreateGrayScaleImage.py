@@ -9,9 +9,9 @@ from sklearn.preprocessing import MinMaxScaler
 from models.Preprocessing import load_data_frame
 from models.fill_nan import FillNanMode
 
-SEGMENT_LENGTH = 7 * 24
-path = "/mnt/79e06c5d-876b-45fd-a066-c9aac1a1c932/Dataset/Power Distribution/irish.csv"
-df = load_data_frame(path, False, False, FillNanMode.linear_auto_fill)
+SEGMENT_LENGTH = 24
+path = "my_data/irish.csv"
+df = load_data_frame(path, False, False, FillNanMode.linear_auto_fill, True)
 
 
 def _apply_parallel(data_frame_grouped, func):
@@ -34,7 +34,7 @@ def make_data_set_single_user(temp_df: pd.DataFrame):
     temp_df.usage = temp_df.usage.astype(np.uint8)
 
     # convert each segment to data row
-    images = temp_df.usage.to_numpy().reshape(-1, SEGMENT_LENGTH, SEGMENT_LENGTH)
+    images = temp_df.usage.to_numpy().reshape(-1, 24, 30)
     name = "GrayScaleImage"
     for i, image in enumerate(images):
         plt.imsave("my_figures/{}/{}_{}.jpeg".format(name, user_id, i), image)
