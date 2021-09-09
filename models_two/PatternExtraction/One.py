@@ -1,5 +1,4 @@
 from multiprocessing import cpu_count
-from multiprocessing import cpu_count
 
 import matplotlib.pyplot as plt
 import numpy as np
