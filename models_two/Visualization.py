@@ -10,7 +10,7 @@ def plot(temp_df: pd.DataFrame):
         plt.plot(inner_temp_df.index, inner_temp_df.usage, label="usage")
         plt.tight_layout()
         plt.legend()
-        plt.savefig("my_figures/irish/{}_{}_{}.jpeg".format(user_id, resample_value, real))
+        plt.savefig("my_figures/irish/{}_{}.jpeg".format(user_id, resample_value))
         plt.close()
 
 
