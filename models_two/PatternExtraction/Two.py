@@ -1,14 +1,16 @@
+from multiprocessing import cpu_count
+
 import numpy as np
 import pandas as pd
 import sklearn
+from joblib import Parallel, delayed
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.neighbors import NearestCentroid
-from models_two.PatternExtraction.One import calculate_distance_matrix
+from sklearn.preprocessing import MinMaxScaler
 from tslearn.metrics import dtw
-from joblib import Parallel, delayed
-from multiprocessing import cpu_count
+
+from models_two.PatternExtraction.One import calculate_distance_matrix
 
 df = pd.read_csv("../../my_data/MHEALTHDATASET/health.csv")
 
@@ -65,79 +67,99 @@ def calculate_distance_to_test(x, centers):
     return temp_distance_matrix
 
 
-# to speed up process
-df = df[df.id == 1]
-vec = df.groupby("id").apply(vectorization)
+def shuffle_split_scale(temp_vec):
+    vectors = temp_vec[1][0]
+    labels = temp_vec[1][1]
+    vectors, labels = sklearn.utils.shuffle(vectors, labels)
 
-vectors = vec[1][0]
-labels = vec[1][1]
-vectors, labels = sklearn.utils.shuffle(vectors, labels)
+    temp_train_x, temp_test_x, temp_train_y, temp_test_y = train_test_split(vectors, labels, test_size=0.33,
+                                                                            random_state=42)
+    scalers = {}
+    for i in range(temp_train_x.shape[2]):
+        scalers[i] = MinMaxScaler()
+        temp_train_x[:, :, i] = scalers[i].fit_transform(temp_train_x[:, :, i])
 
-final_df = pd.DataFrame()
-for feature_index in range(vectors.shape[2]):
-    one_feature = vectors[:, :, feature_index]
+    for i in range(temp_test_x.shape[2]):
+        temp_test_x[:, :, i] = scalers[i].transform(temp_test_x[:, :, i])
 
-    train_x, test_x, train_y, test_y = train_test_split(one_feature, labels, test_size=0.33, random_state=42)
+    return temp_train_x, temp_test_x, temp_train_y, temp_test_y
 
-    scaler = MinMaxScaler()
-    train_x = scaler.fit_transform(train_x)
-    test_x = scaler.transform(test_x)
 
-    distance_matrix = calculate_distance_matrix(train_x)
-
-    # clu = AgglomerativeClustering(distance_threshold=5, n_clusters=None)
-    # clu = clu.fit(train_x)
-    clu = AgglomerativeClustering(distance_threshold=0.75, n_clusters=None, affinity="precomputed", linkage="average")
-    clu = clu.fit(distance_matrix)
-
-    # plt.figure(1, (15, 8))
-    # plt.title('Hierarchical Clustering Dendrogram')
-    # # plot the top three levels of the dendrogram
-    # plot_dendrogram(clu, truncate_mode='level', p=5)
-    # plt.xlabel("Number of points in node (or index of point if no parenthesis).")
-    # plt.show()
-    # plt.close()
-
+def find_valuable_clusters(y_pred, temp_train_y):
     def inner(inner_df: pd.DataFrame):
         inner_df.columns = ["value", "label"]
         return inner_df.groupby("label").count().transpose()
 
-    result_df = pd.DataFrame(np.stack([clu.labels_, train_y.squeeze()], axis=1), columns=["cluster", "label"])
-    result_df = result_df.groupby("cluster").apply(inner)
-    result_df = result_df.reset_index(level=1, drop=True)
-    temp_sum = result_df.apply(lambda row: row.sum(), axis=1)
-    result_df = result_df.apply(lambda row: row / row.sum(), axis=1)
-    result_df = result_df.apply(lambda row: pd.Series([row.max(), row.idxmax()]), axis=1)
-    result_df.columns = ["confidence", "label"]
-    result_df["sum"] = temp_sum
-    result_df["feature"] = feature_index
-    result_df = result_df[result_df["confidence"] > 0.75]
+    temp_result_df = pd.DataFrame(np.stack([y_pred, temp_train_y], axis=1), columns=["cluster", "label"])
+    temp_result_df = temp_result_df.groupby("cluster").apply(inner)
+    temp_result_df = temp_result_df.reset_index(level=1, drop=True)
+    temp_sum = temp_result_df.apply(lambda row: row.sum(), axis=1)
+    temp_result_df = temp_result_df.apply(lambda row: row / row.sum(), axis=1)
+    temp_result_df = temp_result_df.apply(lambda row: pd.Series([row.max(), row.idxmax()]), axis=1)
+    temp_result_df.columns = ["confidence", "label"]
+    temp_result_df["sum"] = temp_sum
+    temp_result_df["feature"] = feature_index
+    temp_result_df = temp_result_df[temp_result_df["confidence"] > 0.75]
+    return temp_result_df
 
+
+def predict_test(temp_train_x, clustering_label_train_x, temp_test_x):
     clf = NearestCentroid()
-    clf.fit(train_x, clu.labels_)
+    clf.fit(temp_train_x, clustering_label_train_x)
     centroids = clf.centroids_
 
-    distance_matrix = calculate_distance_to_test(test_x, centroids)
-    min_distance = np.min(distance_matrix, axis=1)
-    min_distance_index = np.argmin(distance_matrix, axis=1)
+    temp_distance_matrix = calculate_distance_to_test(temp_test_x, centroids)
+    temp_min_distance = np.min(temp_distance_matrix, axis=1)
+    temp_min_distance_index = np.argmin(temp_distance_matrix, axis=1)
 
-    predicted_labels = []
-    for temp_cluster in min_distance_index:
+    temp_predicted_labels = []
+    for temp_cluster in temp_min_distance_index:
         try:
-            predicted_labels.append(result_df.loc[temp_cluster]["label"])
+            temp_predicted_labels.append(result_df.loc[temp_cluster]["label"])
         except:
-            predicted_labels.append(np.nan)
-    predicted_labels = np.array(predicted_labels)
+            temp_predicted_labels.append(np.nan)
+    temp_predicted_labels = np.array(temp_predicted_labels)
 
-    good_indexes = ~np.isnan(predicted_labels)
-    predicted_labels = predicted_labels[good_indexes]
-    test_y = test_y.squeeze()[good_indexes]
-    min_distance = min_distance[good_indexes]
-    result = predicted_labels[min_distance < 0.75] == test_y[min_distance < 0.75]
+    all_prediction_result = pd.Series(temp_predicted_labels, index=range(temp_predicted_labels.shape[0]))
+    good_indexes = ~np.isnan(temp_predicted_labels)
+    temp_predicted_labels = temp_predicted_labels[good_indexes]
+    temp_test_y = test_y.squeeze()[good_indexes]
+    min_distance = temp_min_distance[good_indexes]
+    temp_predicted_labels = temp_predicted_labels[min_distance < 0.75] == temp_test_y[min_distance < 0.75]
 
-    print("accuracy: ", result.sum() / result.shape[0], " -- count: ", result.shape[0], " total count: ", test_x.shape[0])
+    print("accuracy: ", temp_predicted_labels.sum() / temp_predicted_labels.shape[0],
+          " -- count: ", temp_predicted_labels.shape[0], " total count: ", temp_train_x.shape[0])
+
+    return all_prediction_result, temp_predicted_labels
+
+
+# to speed up process
+df = df[df.id == 1]
+vec = df.groupby("id").apply(vectorization)
+
+train_x, test_x, train_y, test_y = shuffle_split_scale(vec)
+
+prediction_df = pd.DataFrame()
+final_df = pd.DataFrame()
+for feature_index in range(train_x.shape[2]):
+    one_feature_train_x = train_x[:, :, feature_index]
+    one_feature_test_x = test_x[:, :, feature_index]
+
+    distance_matrix = calculate_distance_matrix(one_feature_train_x)
+
+    clu = AgglomerativeClustering(distance_threshold=0.75, n_clusters=None, affinity="precomputed", linkage="average")
+    clu = clu.fit(distance_matrix)
+
+    result_df = find_valuable_clusters(clu.labels_, train_y.squeeze())
+
+    result_column, predicted_labels = predict_test(one_feature_train_x, clu.labels_, one_feature_test_x)
+
+    prediction_df["feature_{}".format(feature_index)] = result_column
 
     final_df = final_df.append(result_df)
 
-
 final_df.to_csv("../../my_data/MHEALTHDATASET/temp_result_dtw.csv")
+
+final_label = prediction_df.apply(lambda row: np.argmax(np.bincount(row.dropna().astype(np.int))), axis=1)
+a = final_label.to_numpy() == test_y.squeeze()
+print("total test accuracy: ", a.sum()/a.shape[0])
