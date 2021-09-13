@@ -71,12 +71,10 @@ def calculate_distance_to_test(x, centers):
     return temp_distance_matrix
 
 
-def shuffle_split_scale(temp_vec, user_ids_list):
-    vectors = np.ndarray((0, segment_length, 23))
-    labels = np.ndarray((0, 1))
-    for user_id in user_ids_list:
-        vectors = np.concatenate([vectors, temp_vec[user_id][0]])
-        labels = np.concatenate([labels, temp_vec[user_id][1]])
+def shuffle_split_scale(temp_vec):
+    vectors = temp_vec[0][0]
+    labels = temp_vec[0][1]
+
     vectors, labels = sklearn.utils.shuffle(vectors, labels)
 
     temp_train_x, temp_test_x, temp_train_y, temp_test_y = train_test_split(vectors, labels, test_size=0.33,
@@ -166,57 +164,56 @@ def vote_label(row):
         return np.argmax(np.bincount(temp_row.astype(np.int)))
 
 
-# to speed up process
-# df = df[df.id.isin([3])]
-user_ids = df.id.unique()
-start_time = time.time()
-vec = df.groupby("id").apply(vectorization)
-print("vectorization", " --- %s seconds ---" % (time.time() - start_time))
-# vec = apply_parallel(df.groupby("id"), vectorization)
-
-
-start_time = time.time()
-train_x, test_x, train_y, test_y = shuffle_split_scale(vec, user_ids)
-print("shuffle_split_scale", " --- %s seconds ---" % (time.time() - start_time))
-
-prediction_df = pd.DataFrame()
-final_df = pd.DataFrame()
-for feature_index in range(train_x.shape[2]):
-    print("feature number {}".format(feature_index))
+print("total users count: ", df.id.unique().shape[0])
+for user_id in df.id.unique():
+    user_df = df[df.id == user_id]
     start_time = time.time()
-    one_feature_train_x = train_x[:, :, feature_index]
-    one_feature_test_x = test_x[:, :, feature_index]
-    print("one_feature", " --- %s seconds ---" % (time.time() - start_time))
+    vec = df.groupby("id").apply(vectorization).reset_index(drop=True)
+    print("vectorization", " --- %s seconds ---" % (time.time() - start_time))
+    # vec = apply_parallel(df.groupby("id"), vectorization)
 
     start_time = time.time()
-    distance_matrix = calculate_distance_matrix(one_feature_train_x)
-    print("calculate_distance_matrix", " --- %s seconds ---" % (time.time() - start_time))
+    train_x, test_x, train_y, test_y = shuffle_split_scale(vec)
+    print("shuffle_split_scale", " --- %s seconds ---" % (time.time() - start_time))
 
-    start_time = time.time()
-    clu = AgglomerativeClustering(distance_threshold=0.75, n_clusters=None, affinity="precomputed", linkage="average")
-    clu = clu.fit(distance_matrix)
-    print("AgglomerativeClustering", " --- %s seconds ---" % (time.time() - start_time))
+    prediction_df = pd.DataFrame()
+    final_df = pd.DataFrame()
+    for feature_index in range(train_x.shape[2]):
+        print("feature number {}".format(feature_index))
+        start_time = time.time()
+        one_feature_train_x = train_x[:, :, feature_index]
+        one_feature_test_x = test_x[:, :, feature_index]
+        print("one_feature", " --- %s seconds ---" % (time.time() - start_time))
 
-    start_time = time.time()
-    result_df = find_valuable_clusters(clu.labels_, train_y.squeeze())
-    print("find_valuable_clusters", " --- %s seconds ---" % (time.time() - start_time))
+        start_time = time.time()
+        distance_matrix = calculate_distance_matrix(one_feature_train_x)
+        print("calculate_distance_matrix", " --- %s seconds ---" % (time.time() - start_time))
 
-    print("good cluster: ", result_df.shape[0])
+        start_time = time.time()
+        clu = AgglomerativeClustering(distance_threshold=0.75, n_clusters=None, affinity="precomputed", linkage="average")
+        clu = clu.fit(distance_matrix)
+        print("AgglomerativeClustering", " --- %s seconds ---" % (time.time() - start_time))
 
-    start_time = time.time()
-    result_column, predicted_labels = predict_test(one_feature_train_x, clu.labels_, one_feature_test_x)
-    print("predict_test", " --- %s seconds ---" % (time.time() - start_time))
+        start_time = time.time()
+        result_df = find_valuable_clusters(clu.labels_, train_y.squeeze())
+        print("find_valuable_clusters", " --- %s seconds ---" % (time.time() - start_time))
 
-    start_time = time.time()
-    prediction_df["feature_{}".format(feature_index)] = result_column
-    final_df = final_df.append(result_df)
-    print("final_df", " --- %s seconds ---" % (time.time() - start_time))
+        print("good cluster: ", result_df.shape[0])
+
+        start_time = time.time()
+        result_column, predicted_labels = predict_test(one_feature_train_x, clu.labels_, one_feature_test_x)
+        print("predict_test", " --- %s seconds ---" % (time.time() - start_time))
+
+        start_time = time.time()
+        prediction_df["feature_{}".format(feature_index)] = result_column
+        final_df = final_df.append(result_df)
+        print("final_df", " --- %s seconds ---" % (time.time() - start_time))
+        print()
+        print()
+
+    final_df.to_csv("../../my_data/MHEALTHDATASET/temp_result_dtw.csv")
+
+    final_label = prediction_df.apply(vote_label, axis=1)
+    a = final_label.to_numpy() == test_y.squeeze()
     print()
-    print()
-
-final_df.to_csv("../../my_data/MHEALTHDATASET/temp_result_dtw.csv")
-
-final_label = prediction_df.apply(vote_label, axis=1)
-a = final_label.to_numpy() == test_y.squeeze()
-print()
-print("total test accuracy: ", a.sum() / a.shape[0])
+    print("total test accuracy: ", a.sum() / a.shape[0])
