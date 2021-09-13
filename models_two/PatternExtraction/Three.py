@@ -1,4 +1,3 @@
-import time
 from multiprocessing import cpu_count, Pool
 
 import numpy as np
@@ -112,7 +111,8 @@ def find_valuable_clusters(y_pred, temp_train_y, temp_train_x, temp_feature_inde
 
     temp_sum = temp_result_df.swifter.progress_bar(False).apply(lambda row: row.sum(), axis=1)
     temp_result_df = temp_result_df.swifter.progress_bar(False).apply(lambda row: row / row.sum(), axis=1)
-    temp_result_df = temp_result_df.swifter.progress_bar(False).apply(lambda row: pd.Series([row.max(), row.idxmax()]), axis=1)
+    temp_result_df = temp_result_df.swifter.progress_bar(False).apply(lambda row: pd.Series([row.max(), row.idxmax()]),
+                                                                      axis=1)
     temp_result_df.columns = ["confidence", "label"]
     temp_result_df["sum"] = temp_sum
     temp_result_df["feature"] = temp_feature_index
@@ -125,15 +125,17 @@ def find_valuable_clusters(y_pred, temp_train_y, temp_train_x, temp_feature_inde
     return temp_result_df
 
 
-def predict_test(temp_pattern_df: pd.DataFrame, temp_test_x, temp_test_y):
-    temp_distance_matrix = calculate_distance_to_test(temp_test_x, temp_pattern_df["centroids"])
+def predict_test(temp_pattern_df: pd.DataFrame, temp_test_x, temp_test_y, temp_feature_index):
+    single_feature_patterns = temp_pattern_df[temp_pattern_df["feature"] == temp_feature_index]
+    temp_distance_matrix = calculate_distance_to_test(temp_test_x, np.array(
+        single_feature_patterns["centroids"].tolist()))
     temp_min_distance = np.min(temp_distance_matrix, axis=1)
     temp_min_distance_index = np.argmin(temp_distance_matrix, axis=1)
 
     temp_predicted_labels = []
     for temp_cluster in temp_min_distance_index:
         try:
-            temp_predicted_labels.append(temp_pattern_df.loc[temp_cluster]["label"])
+            temp_predicted_labels.append(single_feature_patterns.iloc[temp_cluster]["label"])
         except:
             temp_predicted_labels.append(np.nan)
     temp_predicted_labels = np.array(temp_predicted_labels)
@@ -143,7 +145,8 @@ def predict_test(temp_pattern_df: pd.DataFrame, temp_test_x, temp_test_y):
     temp_predicted_labels = temp_predicted_labels[good_indexes]
     temp_test_y = temp_test_y.squeeze()[good_indexes]
     min_distance = temp_min_distance[good_indexes]
-    temp_predicted_labels = temp_predicted_labels[min_distance < 0.75] == temp_test_y[min_distance < 0.75]
+    temp_predicted_labels = temp_predicted_labels[min_distance < distance_threshold] == temp_test_y[
+        min_distance < distance_threshold]
 
     return all_prediction_result, temp_predicted_labels
 
@@ -181,16 +184,19 @@ def test(temp_patterns_df: pd.DataFrame, temp_df: pd.DataFrame):
     temp_prediction_df = pd.DataFrame()
     for feature_index in range(test_x.shape[2]):
         one_feature_test_x = test_x[:, :, feature_index]
-        result_column, predicted_labels = predict_test(temp_patterns_df, one_feature_test_x, test_y)
+        result_column, predicted_labels = predict_test(temp_patterns_df, one_feature_test_x, test_y, feature_index)
         temp_prediction_df["feature_{}".format(feature_index)] = result_column
+        print("feature {} test accuracy: ", predicted_labels.sum() / predicted_labels.shape[0])
 
-    final_label = temp_patterns_df.apply(vote_label, axis=1)
+    final_label = temp_prediction_df.apply(vote_label, axis=1)
     temp = final_label.to_numpy() == test_y.squeeze()
     print("total test accuracy: ", temp.sum() / temp.shape[0])
+    final_label = pd.DataFrame([test_y.squeeze(), final_label]).transpose()
+    final_label.columns = ["label", "predict"]
     return final_label
 
 
-train_users_id, test_users_id = train_test_split(df.id.unique(), test_size=0.33, random_state=42)
+train_users_id, test_users_id = train_test_split(df.id.unique(), test_size=0.3, random_state=42)
 
 pattern_df = pd.DataFrame()
 print("total users count: ", df.id.unique().shape[0])
@@ -201,7 +207,9 @@ for user_id in train_users_id:
 
 pattern_df.to_csv("../../my_data/MHEALTHDATASET/patterns.csv")
 
-# prediction_df = pd.DataFrame()
-# for user_id in test_users_id:
-#     user_df = df[df.id == user_id]
-#     prediction_df.append(test(pattern_df, user_df))
+prediction_df = pd.DataFrame()
+for user_id in test_users_id:
+    user_df = df[df.id == user_id]
+    prediction_df = prediction_df.append(test(pattern_df, user_df))
+
+prediction_df.to_csv("../../my_data/MHEALTHDATASET/prediction.csv")
