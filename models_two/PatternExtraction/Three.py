@@ -164,12 +164,13 @@ def train(temp_df: pd.DataFrame):
     for feature_index in range(train_x.shape[2]):
         one_feature_train_x = train_x[:, :, feature_index]
         distance_matrix = calculate_distance_matrix(one_feature_train_x)
-        clu = AgglomerativeClustering(distance_threshold=distance_threshold, n_clusters=None, affinity="precomputed",
+        clu = AgglomerativeClustering(distance_threshold=None, n_clusters=10, affinity="precomputed",
                                       linkage="average")
         clu = clu.fit(distance_matrix)
         result_df = find_valuable_clusters(clu.labels_, train_y.squeeze(), one_feature_train_x, feature_index)
         temp_pattern_df = temp_pattern_df.append(result_df)
 
+    print("extracted patterns count: ", temp_pattern_df.shape[0])
     return temp_pattern_df
 
 
@@ -196,7 +197,7 @@ print("total users count: ", df.id.unique().shape[0])
 for user_id in train_users_id:
     print("extracting patterns on user ", user_id)
     user_df = df[df.id == user_id]
-    pattern_df.append(train(user_df))
+    pattern_df = pattern_df.append(train(user_df))
 
 pattern_df.to_csv("../../my_data/MHEALTHDATASET/patterns.csv")
 
