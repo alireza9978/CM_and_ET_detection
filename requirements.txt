@@ -35,3 +35,4 @@ tensorflow~=2.5.1
 PyWavelets~=1.1.1
 pyts~=0.11.0
 ssqueezepy~=0.6.1
+swifter~=1.0.9
