@@ -1,13 +1,12 @@
+import time
 from multiprocessing import cpu_count, Pool
 
-import time
 import numpy as np
 import pandas as pd
 import sklearn
 import swifter
 from joblib import Parallel, delayed
 from sklearn.cluster import AgglomerativeClustering
-from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestCentroid
 from sklearn.preprocessing import MinMaxScaler
 from tslearn.metrics import dtw
@@ -19,6 +18,8 @@ a = swifter.config
 df = pd.read_csv("../../my_data/MHEALTHDATASET/health.csv")
 
 segment_length = 200
+test_percent = 0.3
+train_percent = 0.7
 
 
 def vectorization(temp_df: pd.DataFrame):
@@ -75,10 +76,21 @@ def shuffle_split_scale(temp_vec):
     vectors = temp_vec[0][0]
     labels = temp_vec[0][1]
 
-    vectors, labels = sklearn.utils.shuffle(vectors, labels)
+    temp_train_x = np.ndarray((0, segment_length, 23))
+    temp_test_x = np.ndarray((0, segment_length, 23))
+    temp_train_y = np.ndarray((0, 1))
+    temp_test_y = np.ndarray((0, 1))
+    unique_labels = np.unique(labels)
+    for temp_label in unique_labels:
+        labels_vectors_indexes = np.where(labels == temp_label)[0]
+        division = int(labels_vectors_indexes.shape[0] * train_percent)
+        train_index = labels_vectors_indexes[:division]
+        test_index = labels_vectors_indexes[division:]
+        temp_train_x = np.concatenate([temp_train_x, vectors[train_index]])
+        temp_test_x = np.concatenate([temp_test_x, vectors[test_index]])
+        temp_train_y = np.concatenate([temp_train_y, labels[train_index]])
+        temp_test_y = np.concatenate([temp_test_y, labels[test_index]])
 
-    temp_train_x, temp_test_x, temp_train_y, temp_test_y = train_test_split(vectors, labels, test_size=0.33,
-                                                                            random_state=42)
     scalers = {}
     for i in range(temp_train_x.shape[2]):
         scalers[i] = MinMaxScaler()
@@ -86,6 +98,9 @@ def shuffle_split_scale(temp_vec):
 
     for i in range(temp_test_x.shape[2]):
         temp_test_x[:, :, i] = scalers[i].transform(temp_test_x[:, :, i])
+
+    temp_train_x, temp_train_y = sklearn.utils.shuffle(temp_train_x, temp_train_y)
+    temp_test_x, temp_test_y = sklearn.utils.shuffle(temp_test_x, temp_test_y)
 
     return temp_train_x, temp_test_x, temp_train_y, temp_test_y
 
@@ -190,7 +205,8 @@ for user_id in df.id.unique():
         print("calculate_distance_matrix", " --- %s seconds ---" % (time.time() - start_time))
 
         start_time = time.time()
-        clu = AgglomerativeClustering(distance_threshold=0.75, n_clusters=None, affinity="precomputed", linkage="average")
+        clu = AgglomerativeClustering(distance_threshold=0.75, n_clusters=None, affinity="precomputed",
+                                      linkage="average")
         clu = clu.fit(distance_matrix)
         print("AgglomerativeClustering", " --- %s seconds ---" % (time.time() - start_time))
 
@@ -209,11 +225,10 @@ for user_id in df.id.unique():
         final_df = final_df.append(result_df)
         print("final_df", " --- %s seconds ---" % (time.time() - start_time))
         print()
-        print()
 
     final_df.to_csv("../../my_data/MHEALTHDATASET/temp_result_dtw.csv")
 
     final_label = prediction_df.apply(vote_label, axis=1)
     a = final_label.to_numpy() == test_y.squeeze()
-    print()
     print("total test accuracy: ", a.sum() / a.shape[0])
+    print()

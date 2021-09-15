@@ -18,6 +18,7 @@ swifter_config = swifter.config
 df = pd.read_csv("../../my_data/MHEALTHDATASET/health.csv")
 
 segment_length = 200
+segment_count = 20
 distance_threshold = 0.9
 confidence_threshold = 0.75
 
@@ -56,6 +57,15 @@ def vectorization(temp_df: pd.DataFrame):
             break
 
     return temp_vectors, labels_vector
+
+
+def vectorization_based_on_count(temp_df: pd.DataFrame):
+    labeled_df = temp_df[temp_df.label != 0]
+    segment_length_df = labeled_df[["id", "label"]].groupby("label").count() // 20
+
+    for row in segment_length_df:
+        print(row)
+    pass
 
 
 def calculate_distance_to_test(x, centers):
@@ -160,7 +170,7 @@ def vote_label(row):
 
 
 def train(temp_df: pd.DataFrame):
-    temp_vectors = temp_df.groupby("id").apply(vectorization).reset_index(drop=True)
+    temp_vectors = temp_df.groupby("id").apply(vectorization_based_on_count).reset_index(drop=True)
     train_x, train_y = shuffle_split_scale(temp_vectors)
 
     temp_pattern_df = pd.DataFrame()
@@ -178,7 +188,7 @@ def train(temp_df: pd.DataFrame):
 
 
 def test(temp_patterns_df: pd.DataFrame, temp_df: pd.DataFrame):
-    temp_vectors = temp_df.groupby("id").apply(vectorization).reset_index(drop=True)
+    temp_vectors = temp_df.groupby("id").apply(vectorization_based_on_count).reset_index(drop=True)
     test_x, test_y = shuffle_split_scale(temp_vectors)
 
     temp_prediction_df = pd.DataFrame()
