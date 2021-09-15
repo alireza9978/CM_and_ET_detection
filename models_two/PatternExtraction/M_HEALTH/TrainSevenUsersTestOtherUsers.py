@@ -15,7 +15,7 @@ from models_two.PatternExtraction.One import calculate_distance_matrix
 
 swifter_config = swifter.config
 
-df = pd.read_csv("../../my_data/MHEALTHDATASET/health.csv")
+df = pd.read_csv("../../../my_data/MHEALTHDATASET/health.csv")
 
 segment_length = 200
 distance_threshold = 0.9
