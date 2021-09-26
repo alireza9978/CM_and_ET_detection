@@ -4,13 +4,13 @@ import pandas as pd
 
 
 # return data that belong to entered user
-def select_one_user(temp_df: pd.DataFrame, user_id: int):
+def select_one_user(temp_df: pd.DataFrame, user_id: str):
     if user_id not in temp_df["id"].unique():
         raise UserNotFoundException(user_id)
     return temp_df[temp_df["id"] == user_id]
 
 
-# return data that belong to random user
+# return data that belong to a random user
 def select_random_user(temp_df: pd.DataFrame):
     temp_id = temp_df["id"][random.randint(0, temp_df["id"].shape[0])]
     return temp_df[temp_df["id"] == temp_id], temp_id
