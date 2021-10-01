@@ -5,7 +5,7 @@ import pandas as pd
 from geneticalgorithm import geneticalgorithm as ga
 
 from models.Preprocessing import load_data_frame
-from models.detection import set_detection_parameters, detect
+from models.detection import Detection
 from models.fill_nan import FillNanMode
 from models.filters import select_one_user
 
@@ -35,9 +35,9 @@ for temp_users_id in users_clusters:
 
 
     def accuracy(a):
-        set_detection_parameters(a[0], a[1], a[2], a[3], a[4])
+        detection_clf = Detection(a[0], a[1], a[2], a[3], a[4])
         global temp_user_df
-        temp_detection = detect(temp_user_df)
+        temp_detection, _ = detection_clf.detect(temp_user_df)
         train_x = temp_user_df.id.unique()
         correct_count = 0
         for user_id in train_x:

@@ -14,9 +14,10 @@ if __name__ == '__main__':
     # hourly_df = select_random_user(hourly_df)
     # detection_clf = Detection("1D", 30, 3.5, 20, 16)
     detection_clf = Detection("7D", 20, 2.5, 10, 8)
-    detection = detection_clf.detect(hourly_df)
+    detection, export_df = detection_clf.detect(hourly_df)
     print(detection.shape)
     print(len(detection.id.unique()))
     for user_id in detection.id.unique():
         plot_detection(detection, user_id, "../my_figures/mining/{}.jpeg".format(user_id), mining=True)
         plot_detection(detection, user_id, "../my_figures/theft/{}.jpeg".format(user_id), theft=True)
+    export_df.to_csv("../results/export.csv", index=False)

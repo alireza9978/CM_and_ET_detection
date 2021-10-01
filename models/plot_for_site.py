@@ -12,9 +12,6 @@ from models.Preprocessing import load_data_frame
 from models.detection import Detection
 from models.fill_nan import FillNanMode
 from models.filters import select_one_user
-from models.filters import select_random_user
-
-import matplotlib as mpl
 
 
 # function to plot output of detection method

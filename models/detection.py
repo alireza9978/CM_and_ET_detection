@@ -14,6 +14,12 @@ class DetectionParam:
         self.n = n
 
 
+def _apply_parallel(data_frame_grouped, func):
+    result_list = Parallel(n_jobs=multiprocessing.cpu_count())(
+        delayed(func)(group) for name, group in data_frame_grouped)
+    return pd.concat(result_list)
+
+
 class Detection:
     def __init__(self, resample: str, windows_size: int, std: float, new_m: int, new_n: int):
         self.params = DetectionParam(resample, windows_size, std, new_m, new_n)
@@ -73,14 +79,14 @@ class Detection:
             start += 1
         return my_temp_df
 
-    def _apply_parallel(self, data_frame_grouped, func):
-        result_list = Parallel(n_jobs=multiprocessing.cpu_count())(
-            delayed(func)(group) for name, group in data_frame_grouped)
-        return pd.concat(result_list)
-
     def detect(self, temp_df: pd.DataFrame):
-        temp_df = self._apply_parallel(temp_df.groupby(["id"]), self._calculate_bands)
+        temp_df = _apply_parallel(temp_df.groupby(["id"]), self._calculate_bands)
         x = temp_df[["mining", "theft", "id"]].reset_index().groupby(["id"]).sum()
         suspect = x[(x.mining > 0) | (x.theft > 0)].reset_index()['id'].unique()
         temp_df = temp_df[temp_df.id.isin(suspect)]
-        return temp_df
+        miners = pd.DataFrame(temp_df[temp_df.mining].id.unique(), columns=["id"])
+        miners["mining"] = True
+        thefts = pd.DataFrame(temp_df[temp_df.theft].id.unique(), columns=["id"])
+        thefts["theft"] = True
+        export_df = miners.append(thefts).fillna(False)
+        return temp_df, export_df

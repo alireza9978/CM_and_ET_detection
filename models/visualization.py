@@ -1,7 +1,5 @@
 import os
 
-import os
-
 import arabic_reshaper
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,8 +49,8 @@ def plot_detection(temp_df: pd.DataFrame, temp_user_id: int, fig_name: str, mini
         label.set_rotation(45)
         label.set_horizontalalignment('right')
         label.set_fontproperties(axes_prop)
-    # plt.title(' {} '.format(temp_user_id) + bidialg.get_display(arabic_reshaper.reshape(u"کاربر با شناسه")),
-    #           fontproperties=prop)
+    plt.title(' {} '.format(temp_user_id) + bidialg.get_display(arabic_reshaper.reshape(u"کاربر با شناسه")),
+              fontproperties=prop)
     fig.tight_layout()
     plt.savefig(fig_name)
     plt.close()

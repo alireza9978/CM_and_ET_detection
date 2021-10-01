@@ -4,7 +4,7 @@ import pandas as pd
 
 
 # return data that belong to entered user
-def select_one_user(temp_df: pd.DataFrame, user_id: str):
+def select_one_user(temp_df: pd.DataFrame, user_id: int):
     if user_id not in temp_df["id"].unique():
         raise UserNotFoundException(user_id)
     return temp_df[temp_df["id"] == user_id]
