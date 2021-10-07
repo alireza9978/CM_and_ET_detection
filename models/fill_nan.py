@@ -50,3 +50,11 @@ def from_previous_data_method(temp_df: pd.DataFrame):
     temp_df = temp_df.groupby("id").fillna(method='ffill', inplace=False).fillna(method='bfill', inplace=False)
     temp_df["id"] = id_series
     return temp_df
+
+
+def fill_nan(temp_df: pd.DataFrame, filling_method: FillNanMode):
+    # fill nan based on implemented method
+    fill_nan_method = filling_method.get_method()
+    if fill_nan_method is not None:
+        temp_df = fill_nan_method(temp_df)
+    return temp_df

@@ -8,20 +8,19 @@ from models.exception import HourlyDateException, MonthlyDateException, WrongCol
 from models.fill_nan import FillNanMode
 
 
-def load_data_frame(path: str, persian_date: bool, accumulative_usage: bool, fill_nan: FillNanMode, small_part=False,
-                    chunk_size=1000000):
+def load_data_frame(path: str, persian_date: bool, accumulative_usage: bool, small_part=False, chunk_size=1000000):
     if small_part:
         temp_df = next(pd.read_csv(path, chunksize=chunk_size))
     else:
         temp_df = pd.read_csv(path)
     if len(temp_df.columns) == 3:
-        return _load_data_frame_hourly(temp_df, persian_date, accumulative_usage, fill_nan)
+        return _load_data_frame_hourly(temp_df, persian_date, accumulative_usage)
     if len(temp_df.columns) == 6:
-        return _load_data_frame_monthly(temp_df, persian_date, fill_nan)
+        return _load_data_frame_monthly(temp_df, persian_date)
     raise WrongColumnsException()
 
 
-def _load_data_frame_hourly(temp_df: pd.DataFrame, persian_date: bool, accumulative_usage: bool, fill_nan: FillNanMode):
+def _load_data_frame_hourly(temp_df: pd.DataFrame, persian_date: bool, accumulative_usage: bool):
     # reordering columns
     temp_df = temp_df[["id", "date", "usage"]]
 
@@ -37,11 +36,6 @@ def _load_data_frame_hourly(temp_df: pd.DataFrame, persian_date: bool, accumulat
 
     # sort values of data set
     temp_df = temp_df.sort_values(by=["id", "date"])
-
-    # fill nan based on implemented method
-    fill_nan_method = fill_nan.get_method()
-    if fill_nan_method is not None:
-        temp_df = fill_nan_method(temp_df)
 
     # convert usage to Non-cumulative
     if accumulative_usage:
@@ -67,7 +61,7 @@ def _calculate_usage_hourly(temp_df: pd.DataFrame):
     return temp_df
 
 
-def _load_data_frame_monthly(temp_df: pd.DataFrame, persian_date: bool, fill_nan: FillNanMode):
+def _load_data_frame_monthly(temp_df: pd.DataFrame, persian_date: bool):
     # sort values of data set
     temp_df = temp_df.sort_values(by=["id", "start_date"])
 
@@ -90,11 +84,6 @@ def _load_data_frame_monthly(temp_df: pd.DataFrame, persian_date: bool, fill_nan
 
     # remove user that have cycle with length less than 1 day
     temp_df = temp_df[~temp_df.id.isin(temp_df[temp_df.days < 1].id.unique())]
-
-    # fill nan based on implemented method
-    fill_nan_method = fill_nan.get_method()
-    if fill_nan_method is not None:
-        temp_df = fill_nan_method(temp_df)
 
     temp_df = _clean_data(temp_df)
 

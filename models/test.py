@@ -1,11 +1,12 @@
 from models.Preprocessing import load_data_frame
 from models.detection import Detection
-from models.fill_nan import FillNanMode
+from models.fill_nan import FillNanMode, fill_nan
 from models.visualization import plot_detection
 
 if __name__ == '__main__':
     path = "../sample_data/hourly_sample_accumulative-usage_gregorian-date.csv"
-    hourly_df = load_data_frame(path, False, True, FillNanMode.from_next_data)
+    hourly_df = load_data_frame(path, False, True)
+    hourly_df = fill_nan(hourly_df, FillNanMode.from_next_data)
     # hourly_df = select_one_user(hourly_df, user_id=132)
 
     # path = "../sample_data/monthly_sample_non-accumulative-usage_gregorian-date.csv"
