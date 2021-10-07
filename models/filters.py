@@ -10,7 +10,7 @@ def select_one_user(temp_df: pd.DataFrame, user_id: int):
     return temp_df[temp_df["id"] == user_id]
 
 
-# return data that belong to random user
+# return data that belong to a random user
 def select_random_user(temp_df: pd.DataFrame):
     temp_id = temp_df["id"][random.randint(0, temp_df["id"].shape[0])]
     return temp_df[temp_df["id"] == temp_id], temp_id

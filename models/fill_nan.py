@@ -37,7 +37,6 @@ def drop_nan_data_method(temp_df: pd.DataFrame):
     return temp_df.dropna()
 
 
-# todo implement methods
 def from_next_data_method(temp_df: pd.DataFrame):
     id_series = temp_df.id
     temp_df = temp_df.groupby("id").fillna(method='bfill', inplace=False).fillna(method='ffill', inplace=False)

@@ -8,6 +8,9 @@ from bidi import algorithm as bidialg
 from matplotlib import font_manager as fm
 from persiantools.jdatetime import JalaliDateTime
 
+from models.Preprocessing import load_data_frame
+from models.detection import Detection
+from models.fill_nan import FillNanMode
 from models.filters import select_one_user
 
 
@@ -49,8 +52,28 @@ def plot_detection(temp_df: pd.DataFrame, temp_user_id: int, fig_name: str, mini
         label.set_rotation(45)
         label.set_horizontalalignment('right')
         label.set_fontproperties(axes_prop)
-    plt.title(' {} '.format(temp_user_id) + bidialg.get_display(arabic_reshaper.reshape(u"کاربر با شناسه")),
-              fontproperties=prop)
+    # plt.title(' {} '.format(temp_user_id) + bidialg.get_display(arabic_reshaper.reshape(u"کاربر با شناسه")),
+    #           fontproperties=prop)
     fig.tight_layout()
     plt.savefig(fig_name)
     plt.close()
+
+
+if __name__ == '__main__':
+    # path = "../sample_data/chenaran.csv"
+    path = "../my_data/mashhad_withNan.csv"
+    df = load_data_frame(path, False, False, FillNanMode.linear_auto_fill)
+    bad_users = [240936, 251597, 267057, 400217, 4293898, 459502, 5000740, 500172, 5013204, 5020110, 5020911, 5024156,
+                 5025136, 5027269, 5029805, 643441, 647369, 695060, 765802, 963439, 975414, 976926, 998240]
+    df = df[df.id.isin(bad_users)]
+    print(df.shape)
+    print("users count = ", len(df.id.unique()))
+    df = df.reset_index(drop=True)
+    # detection_clf = Detection("1D", 30, 3.5, 20, 16)
+    detection_clf = Detection("7D", 20, 2.5, 10, 8)
+    detection = detection_clf.detect(df)
+    print(detection.shape)
+    print(len(detection.id.unique()))
+    for user_id in detection.id.unique():
+        plot_detection(detection, user_id, "../my_figures/site_template/mining/{}.jpeg".format(user_id), mining=True)
+        plot_detection(detection, user_id, "../my_figures/site_template/theft/{}.jpeg".format(user_id), theft=True)

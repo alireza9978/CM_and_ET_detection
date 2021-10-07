@@ -24,7 +24,6 @@ def _load_data_frame_hourly(temp_df: pd.DataFrame, persian_date: bool, accumulat
     # reordering columns
     temp_df = temp_df[["id", "date", "usage"]]
 
-    # todo try-catch for date error
     # convert date to gregorian
     if persian_date:
         try:
