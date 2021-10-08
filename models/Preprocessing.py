@@ -1,18 +1,22 @@
 import multiprocessing
 
 import jdatetime
+import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 
 from models.exception import HourlyDateException, MonthlyDateException, WrongColumnsException, WrongDateFormatException
-from models.fill_nan import FillNanMode
 
 
-def load_data_frame(path: str, persian_date: bool, accumulative_usage: bool, small_part=False, chunk_size=1000000):
+def load_data_frame(path: str, small_part=False, chunk_size=1000000):
     if small_part:
         temp_df = next(pd.read_csv(path, chunksize=chunk_size))
     else:
         temp_df = pd.read_csv(path)
+
+    persian_date = _get_date_kind(temp_df)
+    accumulative_usage = _get_usage_kind(temp_df)
+
     if len(temp_df.columns) == 3:
         return _load_data_frame_hourly(temp_df, persian_date, accumulative_usage)
     if len(temp_df.columns) == 6:
@@ -151,3 +155,35 @@ def _convert_date_time_monthly(x):
         return jdatetime.date(year, month, day).togregorian()
     except:
         raise WrongDateFormatException()
+
+
+def _get_usage_kind(temp_df: pd.DataFrame):
+    def inner_get_usage_kind(inner_df: pd.DataFrame):
+        inner_df = inner_df.reset_index(drop=True)
+        if inner_df.loc[0]["usage"] == inner_df["usage"].min() and \
+                inner_df.loc[inner_df.shape[0] - 1]["usage"] == inner_df["usage"].max():
+            return pd.Series([True])
+        else:
+            return pd.Series([False])
+
+    result = temp_df[["usage", "id"]].groupby("id").apply(inner_get_usage_kind)
+    return result.sum()[0] == result.shape[0]
+
+
+def _get_date_kind(temp_df: pd.DataFrame):
+    try:
+        min_date = temp_df["date"].min()
+        min_year = int(str(min_date)[0:4])
+
+        max_date = temp_df["date"].max()
+        max_year = int(str(max_date)[0:4])
+    except:
+        raise WrongDateFormatException()
+
+    if 2030 > max_year > 1600 and 2030 > min_year > 1600:
+        return False
+
+    if 1450 > max_year > 1300 and 1450 > min_year > 1300:
+        return True
+
+    raise WrongDateFormatException()
